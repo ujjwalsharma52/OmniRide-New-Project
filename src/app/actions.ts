@@ -4,7 +4,7 @@ import { suggestOptimalVehicle } from "@/ai/flows/suggest-optimal-vehicle";
 import { analyzeFeedback } from "@/ai/flows/analyze-feedback";
 import type { SuggestOptimalVehicleInput, AnalyzeFeedbackInput } from "@/ai/schemas";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, updateDoc, getDocs, query, where, orderBy } from "firebase/firestore";
 
 export async function getVehicleSuggestion(input: SuggestOptimalVehicleInput) {
   try {
@@ -71,5 +71,29 @@ export async function acceptRide(rideId: string, driverId: string) {
     } catch (error) {
         console.error("Error accepting ride:", error);
         return { success: false, error: "Failed to accept ride." };
+    }
+}
+
+export async function getRideHistory(userId: string) {
+    try {
+        const ridesQuery = query(
+            collection(db, "rides"),
+            where("userId", "==", userId),
+            orderBy("createdAt", "desc")
+        );
+        const querySnapshot = await getDocs(ridesQuery);
+        const rides = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // Convert Firestore Timestamp to a serializable format (ISO string)
+                createdAt: data.createdAt?.toDate().toISOString(),
+            }
+        });
+        return { success: true, rides };
+    } catch (error) {
+        console.error("Error fetching ride history:", error);
+        return { success: false, error: "Failed to fetch ride history." };
     }
 }

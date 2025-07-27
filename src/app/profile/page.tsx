@@ -8,8 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Phone, History, User } from "lucide-react";
+import { Mail, Phone, History, User, MapPin, IndianRupee, Car } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getRideHistory } from "@/app/actions";
 
 interface UserProfile {
   firstName: string;
@@ -18,10 +19,21 @@ interface UserProfile {
   createdAt: any;
 }
 
+interface Ride {
+  id: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  price: number;
+  vehicleType: string;
+  createdAt: string;
+}
+
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [rideHistory, setRideHistory] = useState<Ride[]>([]);
   const [isFetchingProfile, setIsFetchingProfile] = useState(true);
+  const [isFetchingHistory, setIsFetchingHistory] = useState(true);
 
   useEffect(() => {
     async function fetchUserProfile() {
@@ -39,8 +51,20 @@ export default function ProfilePage() {
       }
     }
 
+    async function fetchRideHistory() {
+        if(user) {
+            setIsFetchingHistory(true);
+            const result = await getRideHistory(user.uid);
+            if (result.success && result.rides) {
+                setRideHistory(result.rides as Ride[]);
+            }
+            setIsFetchingHistory(false);
+        }
+    }
+
     if (!loading) {
       fetchUserProfile();
+      fetchRideHistory();
     }
   }, [user, loading]);
 
@@ -115,10 +139,43 @@ export default function ProfilePage() {
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <History className="h-5 w-5" /> Ride History
             </h3>
-            <div className="text-sm text-muted-foreground">
-              Your past rides will appear here.
-            </div>
-            {/* Placeholder for ride history list */}
+            {isFetchingHistory ? (
+                <div className="space-y-4">
+                    <Skeleton className="h-28 w-full" />
+                    <Skeleton className="h-28 w-full" />
+                </div>
+            ) : rideHistory.length > 0 ? (
+                <div className="space-y-4">
+                    {rideHistory.map((ride) => (
+                        <Card key={ride.id}>
+                            <CardContent className="p-4 grid gap-3">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-bold text-base flex items-center gap-2">
+                                            <Car className="h-5 w-5 text-primary" /> {ride.vehicleType}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                             {new Date(ride.createdAt).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <p className="font-bold text-lg flex items-center gap-1">
+                                        <IndianRupee className="h-5 w-5" />{ride.price.toFixed(2)}
+                                    </p>
+                                </div>
+                                <Separator />
+                                <div className="text-sm space-y-2">
+                                    <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>From:</strong> {ride.pickupLocation}</p>
+                                    <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>To:</strong> {ride.dropoffLocation}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                 <div className="text-sm text-muted-foreground text-center py-8">
+                    You haven't taken any rides yet.
+                </div>
+            )}
           </div>
         </CardContent>
       </Card>
