@@ -16,6 +16,7 @@ export interface Location {
 export default function Home() {
   const [pickup, setPickup] = useState<Location | null>(null);
   const [dropoff, setDropoff] = useState<Location | null>(null);
+  const [distance, setDistance] = useState<number | null>(null);
 
   return (
     <div className="h-[calc(100vh-4rem)] grid lg:grid-cols-[450px_1fr]">
@@ -30,7 +31,7 @@ export default function Home() {
         </div>
         <Separator />
         <div className="p-6 flex-1">
-          <VehicleOptions />
+          <VehicleOptions distance={distance} />
         </div>
         <div className="p-6 border-t">
           <Card>
@@ -50,6 +51,7 @@ export default function Home() {
           dropoff={dropoff}
           setPickup={setPickup}
           setDropoff={setDropoff}
+          setDistance={setDistance}
         />
       </section>
     </div>

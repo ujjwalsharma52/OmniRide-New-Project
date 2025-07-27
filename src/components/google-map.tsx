@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   GoogleMap as GoogleMapApi,
   useJsApiLoader,
@@ -25,6 +25,7 @@ interface GoogleMapProps {
   dropoff: Location | null;
   setPickup: (location: Location) => void;
   setDropoff: (location: Location) => void;
+  setDistance: (distance: number | null) => void;
 }
 
 export default function GoogleMap({
@@ -32,6 +33,7 @@ export default function GoogleMap({
   dropoff,
   setPickup,
   setDropoff,
+  setDistance,
 }: GoogleMapProps) {
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
@@ -63,22 +65,29 @@ export default function GoogleMap({
           origin: new window.google.maps.LatLng(pickup.lat, pickup.lng),
           destination: new window.google.maps.LatLng(dropoff.lat, dropoff.lng),
           travelMode: window.google.maps.TravelMode.DRIVING,
-          provideRouteAlternatives: true,
         },
         (result, status) => {
           if (status === window.google.maps.DirectionsStatus.OK) {
             setDirections(result);
+            if (result?.routes?.[0]?.legs?.[0]?.distance?.value) {
+              const distanceInMeters = result.routes[0].legs[0].distance.value;
+              setDistance(distanceInMeters / 1000); // Convert to kilometers
+            }
           } else {
             console.error(`error fetching directions ${result}`);
+            setDistance(null);
           }
         }
       );
+    } else {
+        setDirections(null);
+        setDistance(null);
     }
-  }, [pickup, dropoff]);
+  }, [pickup, dropoff, setDistance]);
 
-  useState(() => {
-      calculateRoute();
-  });
+  useEffect(() => {
+    calculateRoute();
+  }, [calculateRoute]);
 
 
   if (!isLoaded) {
