@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { CarFront, Bike, Truck, Clock, DollarSign } from "lucide-react";
+import { CarFront, Bike, Truck, Clock, DollarSign, Car } from "lucide-react";
 
 const vehicles = [
   {
@@ -19,6 +19,22 @@ const vehicles = [
     price: "7.80",
     image: "https://placehold.co/100x60.png",
     hint: "motorcycle"
+  },
+  {
+    type: "Auto",
+    icon: Car,
+    eta: "4 min",
+    price: "9.20",
+    image: "https://placehold.co/100x60.png",
+    hint: "auto rickshaw"
+  },
+  {
+    type: "SUV",
+    icon: Car,
+    eta: "7 min",
+    price: "18.00",
+    image: "https://placehold.co/100x60.png",
+    hint: "suv car"
   },
   {
     type: "XL",
