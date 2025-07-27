@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, createContext, useContext, ReactNode } from "react";
@@ -29,11 +30,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setLoading(true);
       if (user) {
-        const docRef = doc(db, "users", user.uid);
-        const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+        setUser(user);
+        const userDocRef = doc(db, "users", user.uid);
+        const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data() as UserProfile);
           } else {
@@ -41,14 +43,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           setLoading(false);
         });
-        return () => unsubscribeSnapshot();
+        return () => unsubscribeProfile();
       } else {
+        setUser(null);
         setUserProfile(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   return (

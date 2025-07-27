@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -71,10 +72,6 @@ export function AuthButtons() {
             </DropdownMenuContent>
       </DropdownMenu>
     );
-  }
-
-  if(user && !userProfile) {
-    return <div className="h-8 w-[120px] bg-muted rounded-md animate-pulse" />;
   }
 
   return (

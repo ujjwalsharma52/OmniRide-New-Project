@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -112,9 +113,9 @@ export default function ProfilePage() {
             <AvatarFallback>{getInitials()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <div className="text-3xl font-semibold leading-none tracking-tight">
+            <CardTitle className="text-3xl">
               {userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "Omni Rider"}
-            </div>
+            </CardTitle>
             <CardDescription>
                 {userProfile ? `Member since ${new Date(userProfile.createdAt.seconds * 1000).toLocaleDateString()}` : 'Loading...'}
             </CardDescription>
