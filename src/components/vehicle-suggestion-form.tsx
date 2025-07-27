@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Lightbulb, Loader2, MapPin, Search, Send } from "lucide-react";
+import { Lightbulb, Loader2, MapPin, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -25,6 +25,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getVehicleSuggestion } from "@/app/actions";
 import type { SuggestOptimalVehicleOutput } from "@/ai/flows/suggest-optimal-vehicle";
+import type { Location } from "@/app/page";
 
 const formSchema = z.object({
   pickup: z.string().min(1, "Pickup location is required"),
@@ -39,7 +40,29 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function VehicleSuggestionForm() {
+interface VehicleSuggestionFormProps {
+  pickup: Location | null;
+  dropoff: Location | null;
+  setPickup: (location: Location | null) => void;
+  setDropoff: (location: Location | null) => void;
+}
+
+async function geocode(lat: number, lng: number) {
+    try {
+        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+            return data.results[0].formatted_address;
+        }
+        return "Unknown Location";
+    } catch (error) {
+        console.error("Geocoding error:", error);
+        return "Error fetching address";
+    }
+}
+
+
+export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setDropoff }: VehicleSuggestionFormProps) {
   const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,12 +78,32 @@ export default function VehicleSuggestionForm() {
     },
   });
 
+  useEffect(() => {
+    if (pickup) {
+        geocode(pickup.lat, pickup.lng).then(address => {
+            form.setValue("pickup", address);
+        });
+    }
+  }, [pickup, form]);
+
+  useEffect(() => {
+    if (dropoff) {
+        geocode(dropoff.lat, dropoff.lng).then(address => {
+            form.setValue("dropoff", address);
+        });
+    }
+  }, [dropoff, form]);
+
+
   const handleSuggestion: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true);
     setError(null);
     setSuggestion(null);
     try {
-      const result = await getVehicleSuggestion(data);
+      const result = await getVehicleSuggestion({
+        ...data,
+        passengerCount: Number(data.passengerCount),
+      });
       setSuggestion(result);
     } catch (e) {
       setError("Failed to get suggestion. Please try again.");
@@ -83,7 +126,7 @@ export default function VehicleSuggestionForm() {
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <FormControl>
-                    <Input placeholder="Enter pickup location" {...field} className="pl-10" />
+                    <Input placeholder="Click map or enter pickup location" {...field} className="pl-10" />
                   </FormControl>
                 </div>
                 <FormMessage />
@@ -99,7 +142,7 @@ export default function VehicleSuggestionForm() {
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <FormControl>
-                    <Input placeholder="Enter destination" {...field} className="pl-10" />
+                    <Input placeholder="Click map or enter destination" {...field} className="pl-10" />
                   </FormControl>
                 </div>
                 <FormMessage />
@@ -183,7 +226,7 @@ export default function VehicleSuggestionForm() {
             <AlertTitle className="text-primary font-bold">AI Suggestion: {suggestion.vehicleSuggestion}</AlertTitle>
             <AlertDescription className="text-primary/90">
                 {suggestion.reasoning}
-            </AlertDescription>
+            </Description>
         </Alert>
       )}
 
