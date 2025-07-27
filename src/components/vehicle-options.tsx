@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { CarFront, Bike, Truck, Clock, IndianRupee, Car, Wallet, CreditCard } from "lucide-react";
+import { CarFront, Bike, Truck, Clock, IndianRupee, Car, Wallet, CreditCard, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const vehicles = [
@@ -47,6 +47,22 @@ const vehicles = [
     ratePerKm: 25,
     image: "https://placehold.co/100x60.png",
     hint: "pickup truck"
+  },
+  {
+    type: "Van",
+    icon: Car,
+    eta: "9 min",
+    ratePerKm: 22,
+    image: "https://placehold.co/100x60.png",
+    hint: "van"
+  },
+  {
+    type: "Luxury",
+    icon: Star,
+    eta: "6 min",
+    ratePerKm: 35,
+    image: "https://placehold.co/100x60.png",
+    hint: "luxury car"
   },
 ];
 
