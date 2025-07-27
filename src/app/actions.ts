@@ -1,6 +1,8 @@
 'use server';
 
 import { suggestOptimalVehicle, type SuggestOptimalVehicleInput } from "@/ai/flows/suggest-optimal-vehicle";
+import { db } from "@/lib/firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 export async function getVehicleSuggestion(input: SuggestOptimalVehicleInput) {
   try {
@@ -10,5 +12,26 @@ export async function getVehicleSuggestion(input: SuggestOptimalVehicleInput) {
     console.error("Error in getVehicleSuggestion action:", error);
     // In a real app, you would have more robust error handling and logging
     throw new Error("Failed to communicate with the AI service.");
+  }
+}
+
+
+export async function createRideRequest(rideData: {
+  userId: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  vehicleType: string;
+  price: number;
+}) {
+  try {
+    await addDoc(collection(db, "rides"), {
+      ...rideData,
+      status: "pending",
+      createdAt: serverTimestamp(),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error creating ride request:", error);
+    return { success: false, error: "Failed to create ride request." };
   }
 }

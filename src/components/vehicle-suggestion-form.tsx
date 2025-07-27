@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -41,7 +41,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 
-export default function VehicleSuggestionForm() {
+export default function VehicleSuggestionForm({ onLocationsChange }: { onLocationsChange: (pickup: string, dropoff: string) => void }) {
   const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +56,14 @@ export default function VehicleSuggestionForm() {
       trafficConditions: "moderate",
     },
   });
+
+  const { watch } = form;
+  const pickup = watch("pickup");
+  const dropoff = watch("dropoff");
+
+  useEffect(() => {
+    onLocationsChange(pickup, dropoff);
+  }, [pickup, dropoff, onLocationsChange]);
 
   const handleSuggestion: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true);

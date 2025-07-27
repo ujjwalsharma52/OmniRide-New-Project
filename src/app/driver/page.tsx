@@ -2,11 +2,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { List, User, Car } from "lucide-react";
+import { List, User, Car, MapPin, IndianRupee } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -19,9 +19,21 @@ interface Driver {
   licensePlate: string;
 }
 
+interface Ride {
+    id: string;
+    pickupLocation: string;
+    dropoffLocation: string;
+    price: number;
+    vehicleType: string;
+    status: string;
+}
+
+
 export default function DriverPage() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRides, setLoadingRides] = useState(true);
 
   useEffect(() => {
     async function fetchDrivers() {
@@ -38,6 +50,18 @@ export default function DriverPage() {
     }
 
     fetchDrivers();
+
+    const ridesQuery = query(collection(db, "rides"), where("status", "==", "pending"));
+    const unsubscribe = onSnapshot(ridesQuery, (querySnapshot) => {
+        const ridesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+        setRides(ridesList);
+        setLoadingRides(false);
+    }, (error) => {
+        console.error("Error fetching rides: ", error);
+        setLoadingRides(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
 
@@ -65,9 +89,39 @@ export default function DriverPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No active ride requests at the moment.</p>
-            </div>
+            {loadingRides ? (
+                 <div className="space-y-4">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                 </div>
+            ) : rides.length > 0 ? (
+                <div className="space-y-4">
+                    {rides.map(ride => (
+                        <Card key={ride.id}>
+                           <CardContent className="p-4 grid gap-4">
+                             <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold text-lg flex items-center gap-2"><Car className="h-5 w-5 text-primary" /> {ride.vehicleType}</p>
+                                    <p className="text-sm text-muted-foreground">Status: {ride.status}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-bold text-xl flex items-center gap-1"><IndianRupee className="h-5 w-5" />{ride.price.toFixed(2)}</p>
+                                </div>
+                             </div>
+                             <div className="text-sm space-y-2">
+                                <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>From:</strong> {ride.pickupLocation}</p>
+                                <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>To:</strong> {ride.dropoffLocation}</p>
+                             </div>
+                             <Button className="w-full">Accept Ride</Button>
+                           </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                    <p>No active ride requests at the moment.</p>
+                </div>
+            )}
           </CardContent>
         </Card>
         

@@ -5,8 +5,12 @@ import Image from "next/image";
 import { useState } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { CarFront, Bike, Truck, Clock, IndianRupee, Car, Wallet, CreditCard, Star } from "lucide-react";
+import { CarFront, Bike, Truck, Clock, IndianRupee, Car, Wallet, CreditCard, Star, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { createRideRequest } from "@/app/actions";
 
 const vehicles = [
   {
@@ -68,8 +72,13 @@ const vehicles = [
 ];
 
 
-export default function VehicleOptions() {
+export default function VehicleOptions({ pickup, dropoff }: { pickup: string; dropoff: string }) {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
+
   const distance = 10; // Default distance in km since map is removed
 
   const handleSelectVehicle = (vehicleType: string) => {
@@ -77,9 +86,69 @@ export default function VehicleOptions() {
   };
   
   const calculatePrice = (ratePerKm: number) => {
-      if (!distance) return "N/A";
+      if (!distance) return 0;
       const price = distance * ratePerKm;
-      return price.toFixed(2);
+      return price;
+  }
+
+  const handleRequestRide = async () => {
+     if (!user) {
+        toast({
+            title: "Authentication Required",
+            description: "Please log in to request a ride.",
+            variant: "destructive",
+        });
+        router.push("/login");
+        return;
+    }
+
+    if (!selectedVehicle) {
+        toast({
+            title: "No Vehicle Selected",
+            description: "Please choose a vehicle for your ride.",
+            variant: "destructive",
+        });
+        return;
+    }
+     if (!pickup || !dropoff) {
+        toast({
+            title: "Locations missing",
+            description: "Please enter both pickup and dropoff locations.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    setIsLoading(true);
+
+    const vehicle = vehicles.find(v => v.type === selectedVehicle);
+    if (!vehicle) return;
+
+    const rideData = {
+        userId: user.uid,
+        pickupLocation: pickup,
+        dropoffLocation: dropoff,
+        vehicleType: vehicle.type,
+        price: calculatePrice(vehicle.ratePerKm)
+    };
+
+    const result = await createRideRequest(rideData);
+
+    if (result.success) {
+         toast({
+            title: "Ride Requested!",
+            description: "We're finding a driver for you.",
+        });
+        setSelectedVehicle(null);
+    } else {
+        toast({
+            title: "Request Failed",
+            description: result.error || "Could not request ride. Please try again.",
+            variant: "destructive",
+        });
+    }
+
+    setIsLoading(false);
   }
 
   return (
@@ -104,27 +173,22 @@ export default function VehicleOptions() {
                                 </h4>
                                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{vehicle.eta}</span>
-                                    <span className="font-bold flex items-center gap-1"><IndianRupee className="h-3 w-3" />{calculatePrice(vehicle.ratePerKm)}</span>
+                                    <span className="font-bold flex items-center gap-1"><IndianRupee className="h-3 w-3" />{calculatePrice(vehicle.ratePerKm).toFixed(2)}</span>
                                 </div>
                             </div>
-                             <Button variant={selectedVehicle === vehicle.type ? "default" : "outline"}>
+                             <Button variant={selectedVehicle === vehicle.type ? "default" : "outline"} className="w-24">
                                 {selectedVehicle === vehicle.type ? "Selected" : "Select"}
                             </Button>
                         </CardContent>
                     </Card>
-                    {selectedVehicle === vehicle.type && (
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                             <Button variant="secondary">
-                                <Wallet className="mr-2" /> Pay with Cash
-                            </Button>
-                            <Button>
-                                <CreditCard className="mr-2" /> Pay Online
-                            </Button>
-                        </div>
-                    )}
                 </div>
             ))}
         </div>
+        {selectedVehicle && (
+            <Button onClick={handleRequestRide} className="w-full" disabled={isLoading}>
+                {isLoading ? <Loader2 className="animate-spin" /> : `Request ${selectedVehicle}`}
+            </Button>
+        )}
     </div>
   );
 }

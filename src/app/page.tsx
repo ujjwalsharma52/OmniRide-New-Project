@@ -9,16 +9,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RatingDialog } from "@/components/rating-dialog";
 
 export default function Home() {
+  const [pickup, setPickup] = useState("");
+  const [dropoff, setDropoff] = useState("");
+
+  const handleLocationsChange = (pickup: string, dropoff: string) => {
+    setPickup(pickup);
+    setDropoff(dropoff);
+  };
 
   return (
     <div className="flex justify-center items-start">
       <aside className="w-full max-w-lg lg:h-full flex flex-col bg-card overflow-y-auto">
         <div className="p-6">
-          <VehicleSuggestionForm />
+          <VehicleSuggestionForm onLocationsChange={handleLocationsChange} />
         </div>
         <Separator />
         <div className="p-6 flex-1">
-          <VehicleOptions />
+          <VehicleOptions pickup={pickup} dropoff={dropoff} />
         </div>
         <div className="p-6 border-t">
           <Card>
