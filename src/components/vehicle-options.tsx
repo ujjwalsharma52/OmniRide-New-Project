@@ -72,7 +72,7 @@ const vehicles = [
 ];
 
 
-export default function VehicleOptions({ pickup, dropoff }: { pickup: string; dropoff: string }) {
+export default function VehicleOptions({ pickup, dropoff, onRideRequested }: { pickup: string; dropoff: string; onRideRequested: (rideId: string) => void; }) {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
@@ -134,11 +134,12 @@ export default function VehicleOptions({ pickup, dropoff }: { pickup: string; dr
 
     const result = await createRideRequest(rideData);
 
-    if (result.success) {
+    if (result.success && result.rideId) {
          toast({
             title: "Ride Requested!",
             description: "We're finding a driver for you.",
         });
+        onRideRequested(result.rideId);
         setSelectedVehicle(null);
     } else {
         toast({

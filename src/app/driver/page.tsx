@@ -6,9 +6,11 @@ import { collection, getDocs, onSnapshot, query, where } from "firebase/firestor
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { List, User, Car, MapPin, IndianRupee } from "lucide-react";
+import { List, User, Car, MapPin, IndianRupee, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { acceptRide } from "@/app/actions";
+import { useToast } from "@/hooks/use-toast";
 
 interface Driver {
   id: string;
@@ -34,6 +36,8 @@ export default function DriverPage() {
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingRides, setLoadingRides] = useState(true);
+  const [acceptingRide, setAcceptingRide] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchDrivers() {
@@ -63,6 +67,33 @@ export default function DriverPage() {
 
     return () => unsubscribe();
   }, []);
+  
+  const handleAcceptRide = async (rideId: string) => {
+    if (drivers.length === 0) {
+        toast({
+            title: "No Drivers Available",
+            description: "Cannot accept ride as there are no registered drivers.",
+            variant: "destructive"
+        })
+        return;
+    }
+    setAcceptingRide(rideId);
+    const driverId = drivers[0].id; // Assign the first driver for simplicity
+    const result = await acceptRide(rideId, driverId);
+    if(result.success){
+        toast({
+            title: "Ride Accepted!",
+            description: "You are on your way to the pickup location."
+        })
+    } else {
+        toast({
+            title: "Failed to Accept",
+            description: result.error,
+            variant: "destructive"
+        })
+    }
+    setAcceptingRide(null);
+  }
 
 
   return (
@@ -112,7 +143,9 @@ export default function DriverPage() {
                                 <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>From:</strong> {ride.pickupLocation}</p>
                                 <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>To:</strong> {ride.dropoffLocation}</p>
                              </div>
-                             <Button className="w-full">Accept Ride</Button>
+                             <Button className="w-full" onClick={() => handleAcceptRide(ride.id)} disabled={acceptingRide === ride.id}>
+                                 {acceptingRide === ride.id ? <Loader2 className="animate-spin" /> : "Accept Ride"}
+                             </Button>
                            </CardContent>
                         </Card>
                     ))}

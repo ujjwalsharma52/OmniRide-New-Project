@@ -2,7 +2,7 @@
 
 import { suggestOptimalVehicle, type SuggestOptimalVehicleInput } from "@/ai/flows/suggest-optimal-vehicle";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 export async function getVehicleSuggestion(input: SuggestOptimalVehicleInput) {
   try {
@@ -24,14 +24,29 @@ export async function createRideRequest(rideData: {
   price: number;
 }) {
   try {
-    await addDoc(collection(db, "rides"), {
+    const docRef = await addDoc(collection(db, "rides"), {
       ...rideData,
       status: "pending",
       createdAt: serverTimestamp(),
     });
-    return { success: true };
+    return { success: true, rideId: docRef.id };
   } catch (error) {
     console.error("Error creating ride request:", error);
     return { success: false, error: "Failed to create ride request." };
   }
+}
+
+export async function acceptRide(rideId: string, driverId: string) {
+    try {
+        const rideRef = doc(db, "rides", rideId);
+        await updateDoc(rideRef, {
+            status: "accepted",
+            driverId: driverId,
+            acceptedAt: serverTimestamp()
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error accepting ride:", error);
+        return { success: false, error: "Failed to accept ride." };
+    }
 }
