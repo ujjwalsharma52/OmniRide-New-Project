@@ -1,65 +1,32 @@
+
 "use client";
 
 import { useState } from "react";
-import { useJsApiLoader } from "@react-google-maps/api";
+import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
-import GoogleMap from "@/components/google-map";
 import VehicleSuggestionForm from "@/components/vehicle-suggestion-form";
 import VehicleOptions from "@/components/vehicle-options";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RatingDialog } from "@/components/rating-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-
-export interface Location {
-  lat: number;
-  lng: number;
-}
-
-const libraries: "places"[] = ["places"];
 
 export default function Home() {
-  const [pickup, setPickup] = useState<Location | null>(null);
-  const [dropoff, setDropoff] = useState<Location | null>(null);
-  const [distance, setDistance] = useState<number | null>(null);
-
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries,
-  });
+  const [distance, setDistance] = useState<number>(10); // Default distance in km
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row">
-       <section className="flex-1 w-full lg:h-full h-1/2">
-        {isLoaded ? (
-          <GoogleMap
-            pickup={pickup}
-            dropoff={dropoff}
-            setPickup={setPickup}
-            setDropoff={setDropoff}
-            setDistance={setDistance}
-          />
-        ) : (
-          <Skeleton className="w-full h-full" />
-        )}
+       <section className="flex-1 w-full lg:h-full h-1/2 relative">
+        <Image 
+          src="https://placehold.co/1200x800.png" 
+          alt="Map placeholder" 
+          layout="fill" 
+          objectFit="cover"
+          data-ai-hint="city map"
+        />
+        <div className="absolute inset-0 bg-black/20" />
       </section>
       <aside className="lg:w-[450px] lg:h-full flex flex-col border-t lg:border-t-0 lg:border-l bg-card overflow-y-auto h-1/2">
         <div className="p-6">
-          {isLoaded ? (
-            <VehicleSuggestionForm
-              pickup={pickup}
-              dropoff={dropoff}
-              setPickup={setPickup}
-              setDropoff={setDropoff}
-            />
-          ) : (
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          )}
+          <VehicleSuggestionForm />
         </div>
         <Separator />
         <div className="p-6 flex-1">

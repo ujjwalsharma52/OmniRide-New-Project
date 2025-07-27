@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,8 +26,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getVehicleSuggestion } from "@/app/actions";
 import type { SuggestOptimalVehicleOutput } from "@/ai/flows/suggest-optimal-vehicle";
-import type { Location } from "@/app/page";
-import { Autocomplete } from "@react-google-maps/api";
 
 const formSchema = z.object({
   pickup: z.string().min(1, "Pickup location is required"),
@@ -41,34 +40,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface VehicleSuggestionFormProps {
-  pickup: Location | null;
-  dropoff: Location | null;
-  setPickup: (location: Location | null) => void;
-  setDropoff: (location: Location | null) => void;
-}
 
-export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setDropoff }: VehicleSuggestionFormProps) {
+export default function VehicleSuggestionForm() {
   const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const pickupAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const dropoffAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-
-  const geocode = useCallback(async (lat: number, lng: number) => {
-    try {
-        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
-        const data = await response.json();
-        if (data.results && data.results.length > 0) {
-            return data.results[0].formatted_address;
-        }
-        return "Unknown Location";
-    } catch (error) {
-        console.error("Geocoding error:", error);
-        return "Error fetching address";
-    }
-  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -80,27 +56,6 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
       trafficConditions: "moderate",
     },
   });
-
-  useEffect(() => {
-    if (pickup) {
-        geocode(pickup.lat, pickup.lng).then(address => {
-            form.setValue("pickup", address);
-        });
-    } else {
-        form.setValue("pickup", "");
-    }
-  }, [pickup, form, geocode]);
-
-  useEffect(() => {
-    if (dropoff) {
-        geocode(dropoff.lat, dropoff.lng).then(address => {
-            form.setValue("dropoff", address);
-        });
-    } else {
-        form.setValue("dropoff", "");
-    }
-  }, [dropoff, form, geocode]);
-
 
   const handleSuggestion: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true);
@@ -119,35 +74,12 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
     }
   };
 
-  const handlePlaceSelect = (autocomplete: google.maps.places.Autocomplete | null, type: 'pickup' | 'dropoff') => {
-    if (autocomplete) {
-        const place = autocomplete.getPlace();
-        if (place.geometry && place.geometry.location) {
-            const newLocation = {
-                lat: place.geometry.location.lat(),
-                lng: place.geometry.location.lng(),
-            };
-            if (type === 'pickup') {
-                setPickup(newLocation);
-                form.setValue('pickup', place.formatted_address || "");
-            } else {
-                setDropoff(newLocation);
-                form.setValue('dropoff', place.formatted_address || "");
-            }
-        }
-    }
-  };
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Where to?</h2>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSuggestion)} className="space-y-4">
-          <Autocomplete
-            onLoad={(ref) => pickupAutocompleteRef.current = ref}
-            onPlaceChanged={() => handlePlaceSelect(pickupAutocompleteRef.current, 'pickup')}
-            fields={["geometry", "formatted_address"]}
-          >
             <FormField
               control={form.control}
               name="pickup"
@@ -158,12 +90,8 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <FormControl>
                       <Input 
-                        placeholder="Click map or enter pickup location" 
-                        {...field} 
-                        onChange={(e) => {
-                          field.onChange(e);
-                          if(e.target.value === "") setPickup(null);
-                        }}
+                        placeholder="Enter pickup location" 
+                        {...field}
                         className="pl-10" 
                       />
                     </FormControl>
@@ -172,12 +100,6 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
                 </FormItem>
               )}
             />
-          </Autocomplete>
-          <Autocomplete
-            onLoad={(ref) => dropoffAutocompleteRef.current = ref}
-            onPlaceChanged={() => handlePlaceSelect(dropoffAutocompleteRef.current, 'dropoff')}
-            fields={["geometry", "formatted_address"]}
-          >
             <FormField
               control={form.control}
               name="dropoff"
@@ -188,12 +110,8 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <FormControl>
                       <Input 
-                        placeholder="Click map or enter destination" 
+                        placeholder="Enter destination" 
                         {...field} 
-                        onChange={(e) => {
-                          field.onChange(e);
-                          if(e.target.value === "") setDropoff(null);
-                        }}
                         className="pl-10" 
                       />
                     </FormControl>
@@ -202,7 +120,6 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
                 </FormItem>
               )}
             />
-          </Autocomplete>
 
           <div className="grid grid-cols-2 gap-4">
             <FormField

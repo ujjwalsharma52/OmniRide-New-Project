@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -88,7 +89,7 @@ export default function VehicleOptions({ distance }: VehicleOptionsProps) {
         <h3 className="text-xl font-semibold">Choose a ride</h3>
         {!distance && (
             <div className="text-center text-muted-foreground py-8">
-                <p>Please select pickup and drop-off locations to see ride options.</p>
+                <p>Please enter pickup and drop-off locations to see ride options.</p>
             </div>
         )}
         <div className="space-y-2">
