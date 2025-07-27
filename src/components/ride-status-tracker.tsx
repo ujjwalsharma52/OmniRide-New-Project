@@ -28,9 +28,12 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
     const [ride, setRide] = useState<Ride | null>(null);
     const [driver, setDriver] = useState<Driver | null>(null);
     const [loading, setLoading] = useState(true);
-    const [eta] = useState(Math.floor(Math.random() * 5) + 2); // Random ETA between 2-7 mins
+    const [eta, setEta] = useState<number | null>(null);
 
     useEffect(() => {
+        // Generate random ETA only on the client-side after mounting
+        setEta(Math.floor(Math.random() * 5) + 2);
+
         const rideRef = doc(db, "rides", rideId);
         const unsubscribe = onSnapshot(rideRef, async (docSnap) => {
             if (docSnap.exists()) {
@@ -133,8 +136,14 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
                                 </div>
                             </div>
                             <div className="text-center">
-                                <p className="text-2xl font-bold">{eta} min</p>
-                                <p className="text-xs text-muted-foreground">ETA</p>
+                                {eta ? (
+                                    <>
+                                        <p className="text-2xl font-bold">{eta} min</p>
+                                        <p className="text-xs text-muted-foreground">ETA</p>
+                                    </>
+                                ) : (
+                                    <Skeleton className="h-8 w-16" />
+                                )}
                             </div>
                         </div>
 
