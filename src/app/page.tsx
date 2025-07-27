@@ -29,8 +29,21 @@ export default function Home() {
   });
 
   return (
-    <div className="h-[calc(100vh-4rem)] grid lg:grid-cols-[450px_1fr]">
-      <aside className="flex flex-col border-r bg-card overflow-y-auto">
+    <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row">
+       <section className="flex-1 w-full lg:h-full h-1/2">
+        {isLoaded ? (
+          <GoogleMap
+            pickup={pickup}
+            dropoff={dropoff}
+            setPickup={setPickup}
+            setDropoff={setDropoff}
+            setDistance={setDistance}
+          />
+        ) : (
+          <Skeleton className="w-full h-full" />
+        )}
+      </section>
+      <aside className="lg:w-[450px] lg:h-full flex flex-col border-t lg:border-t-0 lg:border-l bg-card overflow-y-auto h-1/2">
         <div className="p-6">
           {isLoaded ? (
             <VehicleSuggestionForm
@@ -64,19 +77,6 @@ export default function Home() {
           </Card>
         </div>
       </aside>
-      <section className="hidden lg:block">
-        {isLoaded ? (
-          <GoogleMap
-            pickup={pickup}
-            dropoff={dropoff}
-            setPickup={setPickup}
-            setDropoff={setDropoff}
-            setDistance={setDistance}
-          />
-        ) : (
-          <Skeleton className="w-full h-full" />
-        )}
-      </section>
     </div>
   );
 }
