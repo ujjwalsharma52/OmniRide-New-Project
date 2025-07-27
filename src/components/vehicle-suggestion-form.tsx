@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,7 +47,12 @@ interface VehicleSuggestionFormProps {
   setDropoff: (location: Location | null) => void;
 }
 
-async function geocode(lat: number, lng: number) {
+export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setDropoff }: VehicleSuggestionFormProps) {
+  const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const geocode = useCallback(async (lat: number, lng: number) => {
     try {
         const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`);
         const data = await response.json();
@@ -59,13 +64,7 @@ async function geocode(lat: number, lng: number) {
         console.error("Geocoding error:", error);
         return "Error fetching address";
     }
-}
-
-
-export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setDropoff }: VehicleSuggestionFormProps) {
-  const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -84,7 +83,7 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
             form.setValue("pickup", address);
         });
     }
-  }, [pickup, form]);
+  }, [pickup, form, geocode]);
 
   useEffect(() => {
     if (dropoff) {
@@ -92,7 +91,7 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
             form.setValue("dropoff", address);
         });
     }
-  }, [dropoff, form]);
+  }, [dropoff, form, geocode]);
 
 
   const handleSuggestion: SubmitHandler<FormValues> = async (data) => {
@@ -226,7 +225,7 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
             <AlertTitle className="text-primary font-bold">AI Suggestion: {suggestion.vehicleSuggestion}</AlertTitle>
             <AlertDescription className="text-primary/90">
                 {suggestion.reasoning}
-            </Description>
+            </AlertDescription>
         </Alert>
       )}
 
