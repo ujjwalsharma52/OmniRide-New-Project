@@ -41,7 +41,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 
-export default function VehicleSuggestionForm({ onLocationsChange }: { onLocationsChange: (pickup: string, dropoff: string) => void }) {
+export default function VehicleSuggestionForm({ onLocationsChange, onPassengerChange }: { onLocationsChange: (pickup: string, dropoff: string) => void; onPassengerChange: (count: number) => void; }) {
   const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,10 +60,16 @@ export default function VehicleSuggestionForm({ onLocationsChange }: { onLocatio
   const { watch } = form;
   const pickup = watch("pickup");
   const dropoff = watch("dropoff");
+  const passengerCount = watch("passengerCount");
 
   useEffect(() => {
     onLocationsChange(pickup, dropoff);
   }, [pickup, dropoff, onLocationsChange]);
+
+  useEffect(() => {
+    onPassengerChange(passengerCount);
+  }, [passengerCount, onPassengerChange]);
+
 
   const handleSuggestion: SubmitHandler<FormValues> = async (data) => {
     setIsLoading(true);

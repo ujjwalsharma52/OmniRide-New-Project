@@ -72,7 +72,7 @@ const vehicles = [
 ];
 
 
-export default function VehicleOptions({ pickup, dropoff, onRideRequested }: { pickup: string; dropoff: string; onRideRequested: (rideId: string) => void; }) {
+export default function VehicleOptions({ pickup, dropoff, passengerCount, onRideRequested }: { pickup: string; dropoff: string; passengerCount: number; onRideRequested: (rideId: string) => void; }) {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
@@ -129,7 +129,8 @@ export default function VehicleOptions({ pickup, dropoff, onRideRequested }: { p
         pickupLocation: pickup,
         dropoffLocation: dropoff,
         vehicleType: vehicle.type,
-        price: calculatePrice(vehicle.ratePerKm)
+        price: calculatePrice(vehicle.ratePerKm),
+        passengerCount: passengerCount
     };
 
     const result = await createRideRequest(rideData);

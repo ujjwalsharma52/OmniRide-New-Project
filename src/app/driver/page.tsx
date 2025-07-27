@@ -6,7 +6,7 @@ import { collection, getDocs, onSnapshot, query, where } from "firebase/firestor
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { List, User, Car, MapPin, IndianRupee, Loader2 } from "lucide-react";
+import { List, User, Car, MapPin, IndianRupee, Loader2, Users } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { acceptRide } from "@/app/actions";
@@ -28,6 +28,7 @@ interface Ride {
     price: number;
     vehicleType: string;
     status: string;
+    passengerCount: number;
 }
 
 
@@ -130,16 +131,19 @@ export default function DriverPage() {
                     {rides.map(ride => (
                         <Card key={ride.id}>
                            <CardContent className="p-4 grid gap-4">
-                             <div className="flex justify-between items-center">
+                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="font-bold text-lg flex items-center gap-2"><Car className="h-5 w-5 text-primary" /> {ride.vehicleType}</p>
-                                    <p className="text-sm text-muted-foreground">Status: {ride.status}</p>
+                                    <div className="text-sm text-muted-foreground flex items-center gap-4 mt-1">
+                                      <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {ride.passengerCount}</span>
+                                      <span>Status: {ride.status}</span>
+                                    </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right flex-shrink-0">
                                     <p className="font-bold text-xl flex items-center gap-1"><IndianRupee className="h-5 w-5" />{ride.price.toFixed(2)}</p>
                                 </div>
                              </div>
-                             <div className="text-sm space-y-2">
+                             <div className="text-sm space-y-2 pt-2 border-t">
                                 <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>From:</strong> {ride.pickupLocation}</p>
                                 <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>To:</strong> {ride.dropoffLocation}</p>
                              </div>

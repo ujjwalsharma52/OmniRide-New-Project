@@ -12,6 +12,7 @@ import RideStatusTracker from "@/components/ride-status-tracker";
 export default function Home() {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
+  const [passengerCount, setPassengerCount] = useState(1);
   const [activeRideId, setActiveRideId] = useState<string | null>(null);
 
   const handleLocationsChange = (pickup: string, dropoff: string) => {
@@ -34,11 +35,16 @@ export default function Home() {
       ) : (
         <aside className="w-full max-w-lg lg:h-full flex flex-col bg-card overflow-y-auto rounded-lg shadow-lg border">
           <div className="p-6">
-            <VehicleSuggestionForm onLocationsChange={handleLocationsChange} />
+            <VehicleSuggestionForm onLocationsChange={handleLocationsChange} onPassengerChange={setPassengerCount} />
           </div>
           <Separator />
           <div className="p-6 flex-1">
-            <VehicleOptions pickup={pickup} dropoff={dropoff} onRideRequested={handleNewRide} />
+            <VehicleOptions 
+              pickup={pickup} 
+              dropoff={dropoff} 
+              passengerCount={passengerCount}
+              onRideRequested={handleNewRide} 
+            />
           </div>
           <div className="p-6 border-t">
             <Card>

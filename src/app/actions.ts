@@ -22,6 +22,7 @@ export async function createRideRequest(rideData: {
   dropoffLocation: string;
   vehicleType: string;
   price: number;
+  passengerCount: number;
 }) {
   try {
     const docRef = await addDoc(collection(db, "rides"), {
