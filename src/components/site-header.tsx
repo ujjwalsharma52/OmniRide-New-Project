@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -13,6 +14,7 @@ export default function SiteHeader() {
   const navLinks = [
     { href: "/", label: "Ride" },
     { href: "/driver", label: "Drive" },
+    { href: "/admin", label: "Admin" },
   ];
 
   return (
