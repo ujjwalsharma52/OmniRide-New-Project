@@ -67,12 +67,10 @@ const vehicles = [
   },
 ];
 
-interface VehicleOptionsProps {
-    distance: number | null;
-}
 
-export default function VehicleOptions({ distance }: VehicleOptionsProps) {
+export default function VehicleOptions() {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  const distance = 10; // Default distance in km since map is removed
 
   const handleSelectVehicle = (vehicleType: string) => {
     setSelectedVehicle(vehicleType === selectedVehicle ? null : vehicleType);
@@ -87,13 +85,8 @@ export default function VehicleOptions({ distance }: VehicleOptionsProps) {
   return (
     <div className="space-y-4">
         <h3 className="text-xl font-semibold">Choose a ride</h3>
-        {!distance && (
-            <div className="text-center text-muted-foreground py-8">
-                <p>Please enter pickup and drop-off locations to see ride options.</p>
-            </div>
-        )}
         <div className="space-y-2">
-            {distance && vehicles.map((vehicle) => (
+            {vehicles.map((vehicle) => (
                 <div key={vehicle.type}>
                     <Card 
                         className={cn(

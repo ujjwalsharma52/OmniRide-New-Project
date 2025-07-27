@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RatingDialog } from "@/components/rating-dialog";
 
 export default function Home() {
-  const [distance, setDistance] = useState<number>(10); // Default distance in km
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row">
@@ -30,7 +29,7 @@ export default function Home() {
         </div>
         <Separator />
         <div className="p-6 flex-1">
-          <VehicleOptions distance={distance} />
+          <VehicleOptions />
         </div>
         <div className="p-6 border-t">
           <Card>
