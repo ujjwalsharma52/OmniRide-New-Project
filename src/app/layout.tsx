@@ -10,6 +10,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 export const metadata: Metadata = {
   title: 'OmniRide',
   description: 'Your ride, your way.',
+  manifest: '/manifest.json',
+  themeColor: '#6699FF',
 };
 
 export default function RootLayout({
