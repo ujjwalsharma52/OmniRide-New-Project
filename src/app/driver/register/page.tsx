@@ -76,7 +76,7 @@ export default function DriverRegisterPage() {
     <div className="container py-8">
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl">Driver Registration</CardTitle>
+          <div className="text-2xl font-semibold leading-none tracking-tight">Driver Registration</div>
           <CardDescription>Fill out the form below to start driving with OmniRide.</CardDescription>
         </CardHeader>
         <Form {...form}>

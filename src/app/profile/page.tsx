@@ -112,9 +112,9 @@ export default function ProfilePage() {
             <AvatarFallback>{getInitials()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <CardTitle className="text-3xl">
+            <div className="text-3xl font-semibold leading-none tracking-tight">
               {userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "Omni Rider"}
-            </CardTitle>
+            </div>
             <CardDescription>
                 {userProfile ? `Member since ${new Date(userProfile.createdAt.seconds * 1000).toLocaleDateString()}` : 'Loading...'}
             </CardDescription>
