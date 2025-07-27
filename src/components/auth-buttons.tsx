@@ -73,6 +73,10 @@ export function AuthButtons() {
     );
   }
 
+  if(user && !userProfile) {
+    return <div className="h-8 w-[120px] bg-muted rounded-md animate-pulse" />;
+  }
+
   return (
     <div className="flex items-center gap-2">
       <Button variant="ghost" asChild>
