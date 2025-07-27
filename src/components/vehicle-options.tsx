@@ -2,15 +2,17 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { CarFront, Bike, Truck, Clock, IndianRupee, Car, Wallet, CreditCard, Star, Loader2 } from "lucide-react";
+import { CarFront, Bike, Truck, Clock, IndianRupee, Car, Wallet, CreditCard, Star, Loader2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { createRideRequest } from "@/app/actions";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 const vehicles = [
   {
@@ -18,6 +20,7 @@ const vehicles = [
     icon: CarFront,
     eta: "5 min",
     ratePerKm: 15,
+    capacity: 4,
     image: "https://placehold.co/100x60.png",
     hint: "sedan car"
   },
@@ -26,6 +29,7 @@ const vehicles = [
     icon: Bike,
     eta: "3 min",
     ratePerKm: 8,
+    capacity: 1,
     image: "https://placehold.co/100x60.png",
     hint: "motorcycle"
   },
@@ -34,6 +38,7 @@ const vehicles = [
     icon: Car,
     eta: "4 min",
     ratePerKm: 12,
+    capacity: 3,
     image: "https://placehold.co/100x60.png",
     hint: "auto rickshaw"
   },
@@ -42,6 +47,7 @@ const vehicles = [
     icon: Car,
     eta: "7 min",
     ratePerKm: 20,
+    capacity: 6,
     image: "https://placehold.co/100x60.png",
     hint: "suv car"
   },
@@ -50,6 +56,7 @@ const vehicles = [
     icon: Truck,
     eta: "8 min",
     ratePerKm: 25,
+    capacity: 7,
     image: "https://placehold.co/100x60.png",
     hint: "pickup truck"
   },
@@ -58,6 +65,7 @@ const vehicles = [
     icon: Car,
     eta: "9 min",
     ratePerKm: 22,
+    capacity: 8,
     image: "https://placehold.co/100x60.png",
     hint: "van"
   },
@@ -66,6 +74,7 @@ const vehicles = [
     icon: Star,
     eta: "6 min",
     ratePerKm: 35,
+    capacity: 3,
     image: "https://placehold.co/100x60.png",
     hint: "luxury car"
   },
@@ -74,6 +83,7 @@ const vehicles = [
 
 export default function VehicleOptions({ pickup, dropoff, passengerCount, onRideRequested }: { pickup: string; dropoff: string; passengerCount: number; onRideRequested: (rideId: string) => void; }) {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+  const [seats, setSeats] = useState(passengerCount);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -81,14 +91,23 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
 
   const distance = 10; // Default distance in km since map is removed
 
+  useEffect(() => {
+    setSeats(passengerCount);
+  }, [passengerCount])
+
   const handleSelectVehicle = (vehicleType: string) => {
     setSelectedVehicle(vehicleType === selectedVehicle ? null : vehicleType);
+    const vehicle = vehicles.find(v => v.type === vehicleType);
+    if(vehicle) {
+        setSeats(Math.min(passengerCount, vehicle.capacity));
+    }
   };
   
-  const calculatePrice = (ratePerKm: number) => {
+  const calculatePrice = (ratePerKm: number, numSeats: number) => {
       if (!distance) return 0;
-      const price = distance * ratePerKm;
-      return price;
+      // Simple price calculation, could be more complex (e.g. base fare + per km + per seat)
+      const price = distance * ratePerKm * (numSeats / (vehicles.find(v => v.type === selectedVehicle)?.capacity || 1));
+      return Math.max(price, ratePerKm * 0.5); // Ensure a minimum price
   }
 
   const handleRequestRide = async () => {
@@ -129,8 +148,8 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         pickupLocation: pickup,
         dropoffLocation: dropoff,
         vehicleType: vehicle.type,
-        price: calculatePrice(vehicle.ratePerKm),
-        passengerCount: passengerCount
+        price: calculatePrice(vehicle.ratePerKm, seats),
+        passengerCount: seats
     };
 
     const result = await createRideRequest(rideData);
@@ -152,6 +171,8 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
 
     setIsLoading(false);
   }
+  
+  const selectedVehicleData = vehicles.find(v => v.type === selectedVehicle);
 
   return (
     <div className="space-y-4">
@@ -166,30 +187,54 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
                         )}
                         onClick={() => handleSelectVehicle(vehicle.type)}
                     >
-                        <CardContent className="p-4 flex items-center gap-4">
+                        <CardContent className="p-4 grid grid-cols-3 items-center gap-4">
                             <Image src={vehicle.image} alt={vehicle.type} width={100} height={60} className="rounded-md" data-ai-hint={vehicle.hint} />
-                            <div className="flex-1 space-y-1">
-                                <h4 className="font-bold flex items-center gap-2">
-                                    <vehicle.icon className="h-5 w-5" />
-                                    {vehicle.type}
-                                </h4>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{vehicle.eta}</span>
-                                    <span className="font-bold flex items-center gap-1"><IndianRupee className="h-3 w-3" />{calculatePrice(vehicle.ratePerKm).toFixed(2)}</span>
+                            <div className="col-span-2 flex justify-between items-center">
+                                <div className="space-y-1">
+                                    <h4 className="font-bold flex items-center gap-2">
+                                        <vehicle.icon className="h-5 w-5" />
+                                        {vehicle.type}
+                                    </h4>
+                                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{vehicle.eta}</span>
+                                        <span className="flex items-center gap-1"><Users className="h-3 w-3" />{vehicle.capacity} seats</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="font-bold flex items-center gap-1"><IndianRupee className="h-4 w-4" />{calculatePrice(vehicle.ratePerKm, vehicle.capacity).toFixed(2)}</p>
+                                     <p className="text-xs text-muted-foreground text-right">Full ride</p>
                                 </div>
                             </div>
-                             <Button variant={selectedVehicle === vehicle.type ? "default" : "outline"} className="w-24">
-                                {selectedVehicle === vehicle.type ? "Selected" : "Select"}
-                            </Button>
                         </CardContent>
                     </Card>
                 </div>
             ))}
         </div>
-        {selectedVehicle && (
-            <Button onClick={handleRequestRide} className="w-full" disabled={isLoading}>
-                {isLoading ? <Loader2 className="animate-spin" /> : `Request ${selectedVehicle}`}
-            </Button>
+        {selectedVehicle && selectedVehicleData && (
+            <Card className="p-4 space-y-4 animate-in fade-in-50">
+                <div className="grid grid-cols-2 gap-4 items-center">
+                    <div>
+                        <Label htmlFor="seats">Seats</Label>
+                        <Input 
+                            id="seats"
+                            type="number" 
+                            min="1" 
+                            max={selectedVehicleData.capacity} 
+                            value={seats}
+                            onChange={(e) => setSeats(Math.min(Number(e.target.value), selectedVehicleData.capacity))}
+                            className="mt-1"
+                        />
+                    </div>
+                     <div className="text-right">
+                        <p className="text-2xl font-bold"><IndianRupee className="inline h-5 w-5 -mt-1" />{calculatePrice(selectedVehicleData.ratePerKm, seats).toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground">Estimated price</p>
+                    </div>
+                </div>
+
+                 <Button onClick={handleRequestRide} className="w-full" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="animate-spin" /> : `Request ${selectedVehicle} (${seats} seat${seats > 1 ? 's' : ''})`}
+                </Button>
+            </Card>
         )}
     </div>
   );
