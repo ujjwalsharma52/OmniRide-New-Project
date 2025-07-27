@@ -15,7 +15,7 @@ export default function Home() {
     <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row">
        <section className="flex-1 w-full lg:h-full h-1/2 relative">
         <Image 
-          src="https://placehold.co/1200x800.png" 
+          src="https://placehold.co/600x400.png" 
           alt="Map placeholder" 
           layout="fill" 
           objectFit="cover"
