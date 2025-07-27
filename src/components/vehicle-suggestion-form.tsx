@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,6 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getVehicleSuggestion } from "@/app/actions";
 import type { SuggestOptimalVehicleOutput } from "@/ai/flows/suggest-optimal-vehicle";
 import type { Location } from "@/app/page";
+import { Autocomplete } from "@react-google-maps/api";
 
 const formSchema = z.object({
   pickup: z.string().min(1, "Pickup location is required"),
@@ -51,6 +52,9 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
   const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const pickupAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const dropoffAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const geocode = useCallback(async (lat: number, lng: number) => {
     try {
@@ -115,59 +119,90 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
     }
   };
 
+  const handlePlaceSelect = (autocomplete: google.maps.places.Autocomplete | null, type: 'pickup' | 'dropoff') => {
+    if (autocomplete) {
+        const place = autocomplete.getPlace();
+        if (place.geometry && place.geometry.location) {
+            const newLocation = {
+                lat: place.geometry.location.lat(),
+                lng: place.geometry.location.lng(),
+            };
+            if (type === 'pickup') {
+                setPickup(newLocation);
+                form.setValue('pickup', place.formatted_address || "");
+            } else {
+                setDropoff(newLocation);
+                form.setValue('dropoff', place.formatted_address || "");
+            }
+        }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Where to?</h2>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSuggestion)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="pickup"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Pickup Location</FormLabel>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <FormControl>
-                    <Input 
-                      placeholder="Click map or enter pickup location" 
-                      {...field} 
-                      onChange={(e) => {
-                        field.onChange(e);
-                        if(e.target.value === "") setPickup(null);
-                      }}
-                      className="pl-10" 
-                    />
-                  </FormControl>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="dropoff"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Drop-off Location</FormLabel>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <FormControl>
-                    <Input 
-                      placeholder="Click map or enter destination" 
-                      {...field} 
-                      onChange={(e) => {
-                        field.onChange(e);
-                        if(e.target.value === "") setDropoff(null);
-                      }}
-                      className="pl-10" 
-                    />
-                  </FormControl>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <Autocomplete
+            onLoad={(ref) => pickupAutocompleteRef.current = ref}
+            onPlaceChanged={() => handlePlaceSelect(pickupAutocompleteRef.current, 'pickup')}
+            fields={["geometry", "formatted_address"]}
+          >
+            <FormField
+              control={form.control}
+              name="pickup"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Pickup Location</FormLabel>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <FormControl>
+                      <Input 
+                        placeholder="Click map or enter pickup location" 
+                        {...field} 
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if(e.target.value === "") setPickup(null);
+                        }}
+                        className="pl-10" 
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </Autocomplete>
+          <Autocomplete
+            onLoad={(ref) => dropoffAutocompleteRef.current = ref}
+            onPlaceChanged={() => handlePlaceSelect(dropoffAutocompleteRef.current, 'dropoff')}
+            fields={["geometry", "formatted_address"]}
+          >
+            <FormField
+              control={form.control}
+              name="dropoff"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Drop-off Location</FormLabel>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <FormControl>
+                      <Input 
+                        placeholder="Click map or enter destination" 
+                        {...field} 
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if(e.target.value === "") setDropoff(null);
+                        }}
+                        className="pl-10" 
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </Autocomplete>
 
           <div className="grid grid-cols-2 gap-4">
             <FormField

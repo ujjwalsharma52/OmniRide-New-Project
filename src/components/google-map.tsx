@@ -3,11 +3,9 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   GoogleMap as GoogleMapApi,
-  useJsApiLoader,
   Marker,
   DirectionsRenderer,
 } from "@react-google-maps/api";
-import { Skeleton } from "./ui/skeleton";
 import type { Location } from "@/app/page";
 
 const containerStyle = {
@@ -35,12 +33,6 @@ export default function GoogleMap({
   setDropoff,
   setDistance,
 }: GoogleMapProps) {
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-    libraries: ["places"],
-  });
-
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
 
   const onMapClick = useCallback(
@@ -88,11 +80,6 @@ export default function GoogleMap({
   useEffect(() => {
     calculateRoute();
   }, [calculateRoute]);
-
-
-  if (!isLoaded) {
-    return <Skeleton className="w-full h-full" />;
-  }
 
   return (
     <GoogleMapApi
