@@ -112,7 +112,7 @@ export default function SignupPage() {
                     <FormItem>
                       <FormLabel>First name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Max" {...field} />
+                        <Input type="text" placeholder="Max" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -125,7 +125,7 @@ export default function SignupPage() {
                     <FormItem>
                       <FormLabel>Last name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Robinson" {...field} />
+                        <Input type="text" placeholder="Robinson" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
