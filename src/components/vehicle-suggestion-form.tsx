@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getVehicleSuggestion } from "@/app/actions";
-import type { SuggestOptimalVehicleOutput } from "@/ai/flows/suggest-optimal-vehicle";
+import type { SuggestOptimalVehicleOutput } from "@/ai/schemas";
 
 const formSchema = z.object({
   pickup: z.string().min(1, "Pickup location is required"),

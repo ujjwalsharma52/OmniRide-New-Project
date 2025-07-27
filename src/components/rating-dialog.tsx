@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,13 +11,61 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { submitRating } from "@/app/actions";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
-export function RatingDialog() {
+export function RatingDialog({ rideId = "dummy-ride-id" }: { rideId?: string }) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const handleSubmit = async () => {
+     if (!user) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to submit feedback.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (rating === 0) {
+      toast({
+        title: "Rating required",
+        description: "Please select a star rating before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    const result = await submitRating({ rating, feedback }, rideId, user.uid);
+    setIsLoading(false);
+
+    if (result.success) {
+      toast({
+        title: "Feedback Submitted!",
+        description: "Thank you for helping us improve.",
+      });
+      // Close dialog by finding the close button and clicking it programmatically
+      document.getElementById('close-rating-dialog')?.click();
+      setRating(0);
+      setFeedback("");
+    } else {
+      toast({
+        title: "Submission Failed",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Dialog>
@@ -48,10 +96,19 @@ export function RatingDialog() {
               />
             ))}
           </div>
-          <Textarea placeholder="Tell us more about your experience..." />
+          <Textarea 
+            placeholder="Tell us more about your experience..."
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)} 
+          />
         </div>
         <DialogFooter>
-          <Button type="submit">Submit Feedback</Button>
+           <DialogClose asChild>
+             <Button id="close-rating-dialog" variant="ghost">Cancel</Button>
+           </DialogClose>
+          <Button type="submit" onClick={handleSubmit} disabled={isLoading}>
+             {isLoading ? <Loader2 className="animate-spin" /> : "Submit Feedback"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

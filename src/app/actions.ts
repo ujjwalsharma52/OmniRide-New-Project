@@ -1,6 +1,8 @@
 'use server';
 
-import { suggestOptimalVehicle, type SuggestOptimalVehicleInput } from "@/ai/flows/suggest-optimal-vehicle";
+import { suggestOptimalVehicle } from "@/ai/flows/suggest-optimal-vehicle";
+import { analyzeFeedback } from "@/ai/flows/analyze-feedback";
+import type { SuggestOptimalVehicleInput, AnalyzeFeedbackInput } from "@/ai/schemas";
 import { db } from "@/lib/firebase";
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 
@@ -13,6 +15,26 @@ export async function getVehicleSuggestion(input: SuggestOptimalVehicleInput) {
     // In a real app, you would have more robust error handling and logging
     throw new Error("Failed to communicate with the AI service.");
   }
+}
+
+export async function submitRating(input: AnalyzeFeedbackInput, rideId: string, userId: string) {
+    try {
+        const analysis = await analyzeFeedback(input);
+        
+        await addDoc(collection(db, "ratings"), {
+            rideId,
+            userId,
+            rating: input.rating,
+            feedback: input.feedback,
+            ...analysis,
+            createdAt: serverTimestamp(),
+        });
+        
+        return { success: true };
+    } catch (error) {
+        console.error("Error submitting rating:", error);
+        return { success: false, error: "Failed to submit rating." };
+    }
 }
 
 
