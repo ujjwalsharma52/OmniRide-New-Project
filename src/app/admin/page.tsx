@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Car, IndianRupee, BarChart } from "lucide-react";
@@ -42,25 +42,28 @@ export default function AdminPage() {
   const [rideCount, setRideCount] = useState<number | null>(null);
   const [totalRevenue, setTotalRevenue] = useState<number | null>(null);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
+      setIsLoading(true);
       try {
-        const usersSnapshot = await getDocs(collection(db, "users"));
+        const usersSnapshot = await getDocs(query(collection(db, "users")));
         setUserCount(usersSnapshot.size);
 
-        const driversSnapshot = await getDocs(collection(db, "drivers"));
+        const driversSnapshot = await getDocs(query(collection(db, "drivers")));
         setDriverCount(driversSnapshot.size);
 
-        const ridesSnapshot = await getDocs(collection(db, "rides"));
+        const ridesSnapshot = await getDocs(query(collection(db, "rides")));
         const rides = ridesSnapshot.docs.map(doc => doc.data() as Ride);
         setRideCount(rides.length);
 
-        const total = rides.reduce((sum, ride) => sum + ride.price, 0);
+        const total = rides.reduce((sum, ride) => sum + (ride.price || 0), 0);
         setTotalRevenue(total);
 
         // Prepare data for the chart (revenue over the last 7 days)
         const dailyRevenue: { [key: string]: number } = {};
+        const sevenDaysAgo = subDays(new Date(), 6);
         for (let i = 0; i < 7; i++) {
             const date = subDays(new Date(), i);
             dailyRevenue[format(date, "MMM d")] = 0;
@@ -69,9 +72,11 @@ export default function AdminPage() {
         rides.forEach(ride => {
             if (ride.createdAt) {
                 const rideDate = new Date(ride.createdAt.seconds * 1000);
-                const dateKey = format(rideDate, "MMM d");
-                if (dateKey in dailyRevenue) {
-                    dailyRevenue[dateKey] += ride.price;
+                if (rideDate >= sevenDaysAgo) {
+                    const dateKey = format(rideDate, "MMM d");
+                    if (dateKey in dailyRevenue) {
+                        dailyRevenue[dateKey] += ride.price || 0;
+                    }
                 }
             }
         });
@@ -84,13 +89,14 @@ export default function AdminPage() {
 
       } catch (error) {
         console.error("Error fetching admin data:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
 
     fetchData();
   }, []);
 
-  const isLoading = userCount === null || driverCount === null || rideCount === null || totalRevenue === null;
 
   return (
     <div className="container py-8">
@@ -108,7 +114,7 @@ export default function AdminPage() {
             <MetricCard title="Total Users" value={userCount?.toString() || '0'} icon={Users} />
             <MetricCard title="Total Drivers" value={driverCount?.toString() || '0'} icon={Car} />
             <MetricCard title="Total Rides" value={rideCount?.toString() || '0'} icon={BarChart} />
-            <MetricCard title="Total Revenue" value={`₹${totalRevenue?.toFixed(2)}`} icon={IndianRupee} />
+            <MetricCard title="Total Revenue" value={`₹${totalRevenue?.toFixed(2) || '0.00'}`} icon={IndianRupee} />
         </div>
       )}
 

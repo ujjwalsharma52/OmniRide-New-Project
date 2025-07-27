@@ -152,9 +152,9 @@ export default function ProfilePage() {
                             <CardContent className="p-4 grid gap-3">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <p className="font-bold text-base flex items-center gap-2">
+                                        <div className="font-bold text-base flex items-center gap-2">
                                             <Car className="h-5 w-5 text-primary" /> {ride.vehicleType}
-                                        </p>
+                                        </div>
                                         <p className="text-sm text-muted-foreground">
                                              {new Date(ride.createdAt).toLocaleString()}
                                         </p>

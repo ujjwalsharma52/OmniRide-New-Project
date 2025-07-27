@@ -112,9 +112,11 @@ export default function DriverPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="col-span-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <List className="h-5 w-5" />
-              Ride Requests
+            <CardTitle>
+              <div className="flex items-center gap-2">
+                <List className="h-5 w-5" />
+                Ride Requests
+              </div>
             </CardTitle>
             <CardDescription>
               New ride requests will appear here.
@@ -180,8 +182,10 @@ export default function DriverPage() {
           drivers.map(driver => (
             <Card key={driver.id}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" /> {driver.fullName}
+                <CardTitle>
+                    <div className="flex items-center gap-2">
+                        <User className="h-5 w-5" /> {driver.fullName}
+                    </div>
                 </CardTitle>
                 <CardDescription>{driver.email}</CardDescription>
               </CardHeader>
