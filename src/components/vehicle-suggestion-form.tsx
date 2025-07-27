@@ -82,6 +82,8 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
         geocode(pickup.lat, pickup.lng).then(address => {
             form.setValue("pickup", address);
         });
+    } else {
+        form.setValue("pickup", "");
     }
   }, [pickup, form, geocode]);
 
@@ -90,6 +92,8 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
         geocode(dropoff.lat, dropoff.lng).then(address => {
             form.setValue("dropoff", address);
         });
+    } else {
+        form.setValue("dropoff", "");
     }
   }, [dropoff, form, geocode]);
 
@@ -125,7 +129,15 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <FormControl>
-                    <Input placeholder="Click map or enter pickup location" {...field} className="pl-10" />
+                    <Input 
+                      placeholder="Click map or enter pickup location" 
+                      {...field} 
+                      onChange={(e) => {
+                        field.onChange(e);
+                        if(e.target.value === "") setPickup(null);
+                      }}
+                      className="pl-10" 
+                    />
                   </FormControl>
                 </div>
                 <FormMessage />
@@ -141,7 +153,15 @@ export default function VehicleSuggestionForm({ pickup, dropoff, setPickup, setD
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <FormControl>
-                    <Input placeholder="Click map or enter destination" {...field} className="pl-10" />
+                    <Input 
+                      placeholder="Click map or enter destination" 
+                      {...field} 
+                      onChange={(e) => {
+                        field.onChange(e);
+                        if(e.target.value === "") setDropoff(null);
+                      }}
+                      className="pl-10" 
+                    />
                   </FormControl>
                 </div>
                 <FormMessage />
