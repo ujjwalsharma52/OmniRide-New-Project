@@ -14,6 +14,7 @@ import { createRideRequest } from "@/app/actions";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 declare global {
     interface Window {
@@ -92,7 +93,7 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [seats, setSeats] = useState(passengerCount);
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("wallet");
+  const [paymentMethod, setPaymentMethod] = useState("card");
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -116,6 +117,26 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
       // Simple price calculation, could be more complex (e.g. base fare + per km + per seat)
       const price = distance * ratePerKm * (numSeats / (vehicles.find(v => v.type === selectedVehicle)?.capacity || 1));
       return Math.max(price, ratePerKm * 0.5); // Ensure a minimum price
+  }
+
+  const proceedWithRideRequest = async (rideData: any) => {
+    const result = await createRideRequest(rideData);
+
+    if (result.success && result.rideId) {
+        toast({
+            title: "Ride Requested!",
+            description: "We're finding a driver for you.",
+        });
+        onRideRequested(result.rideId);
+        setSelectedVehicle(null);
+    } else {
+        toast({
+            title: "Request Failed",
+            description: result.error || "Could not request ride. Please try again.",
+            variant: "destructive",
+        });
+    }
+    setIsLoading(false);
   }
 
   const handleRequestRide = async () => {
@@ -160,8 +181,15 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         dropoffLocation: dropoff,
         vehicleType: vehicle.type,
         price: calculatePrice(vehicle.ratePerKm, seats),
-        passengerCount: seats
+        passengerCount: seats,
+        paymentMethod: paymentMethod,
     };
+    
+    // If cash, book directly. Otherwise, go to payment.
+    if (paymentMethod === "cash") {
+        await proceedWithRideRequest(rideData);
+        return;
+    }
     
     // In a real app, you would create an order on your server and get an order_id
     // For this simulation, we'll proceed directly to payment
@@ -175,24 +203,7 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         handler: async function (response: any) {
             // This function is called after a successful payment
             console.log("Payment successful:", response);
-            
-            const result = await createRideRequest(rideData);
-
-            if (result.success && result.rideId) {
-                 toast({
-                    title: "Ride Requested!",
-                    description: "We're finding a driver for you.",
-                });
-                onRideRequested(result.rideId);
-                setSelectedVehicle(null);
-            } else {
-                toast({
-                    title: "Request Failed",
-                    description: result.error || "Could not request ride. Please try again.",
-                    variant: "destructive",
-                });
-            }
-            setIsLoading(false);
+            await proceedWithRideRequest(rideData);
         },
         prefill: {
             name: `${userProfile.firstName} ${userProfile.lastName}`,
@@ -296,27 +307,47 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
                 
                 <div>
                     <h4 className="text-sm font-medium mb-2">Payment Method</h4>
-                    <div className="flex gap-2">
-                         <Button variant={paymentMethod === 'wallet' ? 'default' : 'outline'} className="flex-1" onClick={() => setPaymentMethod('wallet')}>
-                            <Wallet className="mr-2 h-4 w-4" /> Wallet
-                            {paymentMethod === 'wallet' && <CheckCircle2 className="ml-auto h-4 w-4" />}
-                        </Button>
-                        <Button variant={paymentMethod === 'upi' ? 'default' : 'outline'} className="flex-1" onClick={() => setPaymentMethod('upi')}>
-                           <p className="font-bold mr-2">UPI</p>
-                           {paymentMethod === 'upi' && <CheckCircle2 className="ml-auto h-4 w-4" />}
-                        </Button>
-                         <Button variant={paymentMethod === 'card' ? 'default' : 'outline'} className="flex-1" onClick={() => setPaymentMethod('card')}>
-                            <CreditCard className="mr-2 h-4 w-4" /> Card
-                             {paymentMethod === 'card' && <CheckCircle2 className="ml-auto h-4 w-4" />}
-                        </Button>
-                    </div>
+                     <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-2 gap-4">
+                        <div>
+                          <RadioGroupItem value="card" id="card" className="peer sr-only" />
+                          <Label htmlFor="card" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            <CreditCard className="mb-3 h-6 w-6" />
+                            Card
+                          </Label>
+                        </div>
+                        <div>
+                          <RadioGroupItem value="wallet" id="wallet" className="peer sr-only" />
+                          <Label htmlFor="wallet" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            <Wallet className="mb-3 h-6 w-6" />
+                            Wallet
+                          </Label>
+                        </div>
+                        <div>
+                          <RadioGroupItem value="upi" id="upi" className="peer sr-only" />
+                          <Label htmlFor="upi" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                             <div className="flex items-center gap-2 mb-3">
+                                <Image src="https://www.vectorlogo.zone/logos/googlepay/googlepay-icon.svg" alt="Google Pay" width={24} height={24} />
+                                <Image src="https://www.vectorlogo.zone/logos/paytm/paytm-icon.svg" alt="Paytm" width={24} height={24} />
+                            </div>
+                            UPI
+                          </Label>
+                        </div>
+                        <div>
+                          <RadioGroupItem value="cash" id="cash" className="peer sr-only" />
+                          <Label htmlFor="cash" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            <IndianRupee className="mb-3 h-6 w-6" />
+                            Cash
+                          </Label>
+                        </div>
+                      </RadioGroup>
                 </div>
 
                  <Button onClick={handleRequestRide} className="w-full" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="animate-spin" /> : `Pay & Request ${selectedVehicle}`}
+                    {isLoading ? <Loader2 className="animate-spin" /> : `Confirm & Request ${selectedVehicle}`}
                 </Button>
             </Card>
         )}
     </div>
   );
 }
+

@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.vectorlogo.zone',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };
