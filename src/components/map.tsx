@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 
 const containerStyle = {
@@ -321,17 +321,19 @@ function Map({ setPickup, setDropoff }: MapProps) {
   const [currentSelection, setCurrentSelection] = useState<'pickup' | 'dropoff'>('pickup');
   const [theme, setTheme] = useState('light');
 
-  // A simple way to check for dark theme without a full theme provider context
-  // A proper implementation would use context from a ThemeProvider
-  useState(() => {
-    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        setTheme('dark');
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        setTheme(mediaQuery.matches ? 'dark' : 'light');
+
+        const handler = (event: MediaQueryListEvent) => {
+            setTheme(event.matches ? "dark" : "light");
+        };
+
+        mediaQuery.addEventListener('change', handler);
+        return () => mediaQuery.removeEventListener('change', handler);
     }
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-        const newTheme = event.matches ? "dark" : "light";
-        setTheme(newTheme);
-      });
-  })
+  }, []);
 
   const getAddress = useCallback((latLng: google.maps.LatLngLiteral) => {
     if (typeof window === 'undefined' || !window.google) return;
