@@ -42,33 +42,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         setUser(user);
         
-        let userDocRef;
-        // Check if the user authenticated with a phone number
-        if (user.providerData.some(p => p.providerId === 'phone')) {
-            // For phone auth, we might not have a user doc yet.
-            // Or, we might need a different way to look up the user,
-            // e.g., by phone number if we stored it.
-            // For now, let's assume we create a doc with their UID.
-             userDocRef = doc(db, "users", user.uid);
-        } else {
-            userDocRef = doc(db, "users", user.uid);
-        }
+        const userDocRef = doc(db, "users", user.uid);
 
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data());
           } else {
-            // This could be a new user via phone auth.
-            // We can create a profile or handle as needed.
-            if(user.phoneNumber) {
-                setUserProfile({ phone: user.phoneNumber });
-            } else {
-                setUserProfile(null);
-            }
+            setUserProfile(null);
           }
           setLoading(false);
         });
+
         return () => unsubscribeProfile();
+
       } else {
         setUser(null);
         setUserProfile(null);
