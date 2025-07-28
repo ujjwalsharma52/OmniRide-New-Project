@@ -15,6 +15,12 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 
+declare global {
+    interface Window {
+        Razorpay: any;
+    }
+}
+
 const vehicles = [
   {
     type: "Standard",
@@ -87,7 +93,7 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
   const [seats, setSeats] = useState(passengerCount);
   const [isLoading, setIsLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("wallet");
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -113,7 +119,7 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
   }
 
   const handleRequestRide = async () => {
-     if (!user) {
+     if (!user || !userProfile) {
         toast({
             title: "Authentication Required",
             description: "Please log in to request a ride.",
@@ -139,11 +145,14 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         });
         return;
     }
-
+    
     setIsLoading(true);
 
     const vehicle = vehicles.find(v => v.type === selectedVehicle);
-    if (!vehicle) return;
+    if (!vehicle) {
+        setIsLoading(false);
+        return;
+    }
 
     const rideData = {
         userId: user.uid,
@@ -153,25 +162,73 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         price: calculatePrice(vehicle.ratePerKm, seats),
         passengerCount: seats
     };
+    
+    // In a real app, you would create an order on your server and get an order_id
+    // For this simulation, we'll proceed directly to payment
+    const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: rideData.price * 100, // Amount in paise
+        currency: "INR",
+        name: "OmniRide",
+        description: `Ride from ${rideData.pickupLocation} to ${rideData.dropoffLocation}`,
+        image: "https://placehold.co/100x100.png", // Your logo
+        handler: async function (response: any) {
+            // This function is called after a successful payment
+            console.log("Payment successful:", response);
+            
+            const result = await createRideRequest(rideData);
 
-    const result = await createRideRequest(rideData);
-
-    if (result.success && result.rideId) {
-         toast({
-            title: "Ride Requested!",
-            description: "We're finding a driver for you.",
-        });
-        onRideRequested(result.rideId);
-        setSelectedVehicle(null);
-    } else {
+            if (result.success && result.rideId) {
+                 toast({
+                    title: "Ride Requested!",
+                    description: "We're finding a driver for you.",
+                });
+                onRideRequested(result.rideId);
+                setSelectedVehicle(null);
+            } else {
+                toast({
+                    title: "Request Failed",
+                    description: result.error || "Could not request ride. Please try again.",
+                    variant: "destructive",
+                });
+            }
+            setIsLoading(false);
+        },
+        prefill: {
+            name: `${userProfile.firstName} ${userProfile.lastName}`,
+            email: user.email,
+            contact: user.phoneNumber
+        },
+        notes: {
+            address: "OmniRide Corporate Office"
+        },
+        theme: {
+            color: "#6699FF"
+        },
+        modal: {
+            ondismiss: function() {
+                setIsLoading(false);
+                toast({
+                    title: "Payment Cancelled",
+                    description: "Your ride request was not placed.",
+                    variant: "destructive",
+                })
+            }
+        }
+    };
+    
+    try {
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+    } catch(e) {
+        console.error("Razorpay Error: ", e);
         toast({
-            title: "Request Failed",
-            description: result.error || "Could not request ride. Please try again.",
+            title: "Payment Error",
+            description: "Could not initialize payment gateway. Please try again.",
             variant: "destructive",
-        });
+        })
+        setIsLoading(false);
     }
-
-    setIsLoading(false);
   }
   
   const selectedVehicleData = vehicles.find(v => v.type === selectedVehicle);
@@ -256,7 +313,7 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
                 </div>
 
                  <Button onClick={handleRequestRide} className="w-full" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="animate-spin" /> : `Request ${selectedVehicle} (${seats} seat${seats > 1 ? 's' : ''})`}
+                    {isLoading ? <Loader2 className="animate-spin" /> : `Pay & Request ${selectedVehicle}`}
                 </Button>
             </Card>
         )}
