@@ -196,7 +196,9 @@ export default function DriverPage() {
         <TabsContent value="history" className="mt-6">
              <Card>
                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><History className="h-5 w-5" />Trip History</CardTitle>
+                    <CardTitle>
+                      <div className="flex items-center gap-2"><History className="h-5 w-5" />Trip History</div>
+                    </CardTitle>
                     <CardDescription>A log of all your completed and ongoing trips.</CardDescription>
                  </CardHeader>
                  <CardContent>
