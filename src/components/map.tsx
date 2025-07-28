@@ -3,6 +3,9 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
+import { useIsClient } from '@/hooks/useIsClient';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 const containerStyle = {
   width: '100%',
@@ -310,6 +313,8 @@ type MapProps = {
 }
 
 function Map({ setPickup, setDropoff }: MapProps) {
+    const isClient = useIsClient();
+
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
@@ -322,7 +327,7 @@ function Map({ setPickup, setDropoff }: MapProps) {
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
+    if (isClient && window.matchMedia) {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         setTheme(mediaQuery.matches ? 'dark' : 'light');
 
@@ -333,7 +338,7 @@ function Map({ setPickup, setDropoff }: MapProps) {
         mediaQuery.addEventListener('change', handler);
         return () => mediaQuery.removeEventListener('change', handler);
     }
-  }, []);
+  }, [isClient]);
 
   const getAddress = useCallback((latLng: google.maps.LatLngLiteral, selection: 'pickup' | 'dropoff') => {
     if (typeof window === 'undefined' || !window.google) return;
@@ -374,7 +379,23 @@ function Map({ setPickup, setDropoff }: MapProps) {
 
 
   if (loadError) {
-    return <div>Error loading maps. Check your API key.</div>;
+    return (
+        <div className="h-full w-full flex items-center justify-center bg-muted/50 p-4">
+            <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Map Error</AlertTitle>
+                <AlertDescription>
+                   Google Maps failed to load. This is usually due to a missing or misconfigured API key. Please check the following:
+                   <ul className="list-disc pl-5 mt-2">
+                       <li>Ensure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set in your environment.</li>
+                       <li>Verify the API key is correct in your Google Cloud project.</li>
+                       <li>Make sure the "Maps JavaScript API" is enabled in your project.</li>
+                       <li>Confirm that billing is enabled for your Google Cloud project.</li>
+                   </ul>
+                </AlertDescription>
+            </Alert>
+        </div>
+    );
   }
 
   return isLoaded ? (
@@ -392,7 +413,7 @@ function Map({ setPickup, setDropoff }: MapProps) {
             <MarkerF position={dropoffMarker} label="D" />
         )}
       </GoogleMap>
-  ) : <div>Loading Map...</div>
+  ) : <div className="h-full w-full flex items-center justify-center bg-muted/50"><p>Loading Map...</p></div>
 }
 
 export default Map;
