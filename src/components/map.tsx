@@ -335,13 +335,13 @@ function Map({ setPickup, setDropoff }: MapProps) {
     }
   }, []);
 
-  const getAddress = useCallback((latLng: google.maps.LatLngLiteral) => {
+  const getAddress = useCallback((latLng: google.maps.LatLngLiteral, selection: 'pickup' | 'dropoff') => {
     if (typeof window === 'undefined' || !window.google) return;
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ location: latLng }, (results, status) => {
       if (status === 'OK' && results && results[0]) {
         const address = results[0].formatted_address;
-        if (currentSelection === 'pickup') {
+        if (selection === 'pickup') {
           setPickup(address);
         } else {
           setDropoff(address);
@@ -349,25 +349,25 @@ function Map({ setPickup, setDropoff }: MapProps) {
       } else {
         console.error('Geocoder failed due to: ' + status);
         const fallbackAddress = `Lat: ${latLng.lat.toFixed(4)}, Lng: ${latLng.lng.toFixed(4)}`;
-         if (currentSelection === 'pickup') {
+         if (selection === 'pickup') {
           setPickup(fallbackAddress);
         } else {
           setDropoff(fallbackAddress);
         }
       }
     });
-  }, [currentSelection, setPickup, setDropoff]);
+  }, [setPickup, setDropoff]);
 
   const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
     if (!e.latLng) return;
     const newLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
     if (currentSelection === 'pickup') {
       setPickupMarker(newLocation);
-      getAddress(newLocation);
+      getAddress(newLocation, 'pickup');
       setCurrentSelection('dropoff');
     } else {
       setDropoffMarker(newLocation);
-      getAddress(newLocation);
+      getAddress(newLocation, 'dropoff');
       setCurrentSelection('pickup');
     }
   }, [currentSelection, getAddress]);
