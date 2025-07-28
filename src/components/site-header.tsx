@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { AuthButtons } from "./auth-buttons";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./theme-toggle";
 
 export default function SiteHeader() {
   const pathname = usePathname();
@@ -42,6 +43,7 @@ export default function SiteHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center space-x-4">
+          <ThemeToggle />
           <AuthButtons />
         </div>
       </div>
