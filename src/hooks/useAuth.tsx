@@ -3,7 +3,7 @@
 
 import { useEffect, useState, createContext, useContext, ReactNode } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, onSnapshot, DocumentData } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, DocumentData, Unsubscribe } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
 // Augment the Window interface to include recaptchaVerifier
@@ -37,32 +37,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setLoading(true);
-      if (user) {
-        setUser(user);
-        
-        const userDocRef = doc(db, "users", user.uid);
+    let unsubscribeProfile: Unsubscribe | undefined;
 
-        const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setLoading(true);
+      // Clean up previous profile listener if it exists
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+
+      if (currentUser) {
+        setUser(currentUser);
+        const userDocRef = doc(db, "users", currentUser.uid);
+
+        // Set up new profile listener
+        unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data());
           } else {
+            // This case handles users who are authenticated (e.g. via phone) 
+            // but may not have a user document in Firestore yet.
             setUserProfile(null);
           }
           setLoading(false);
+        }, (error) => {
+            console.error("Error fetching user profile:", error);
+            setUserProfile(null);
+            setLoading(false);
         });
-
-        return () => unsubscribeProfile();
-
       } else {
+        // User is signed out
         setUser(null);
         setUserProfile(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
+    // Cleanup function for the auth listener
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
   }, []);
 
   return (
