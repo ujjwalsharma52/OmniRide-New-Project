@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { useIsClient } from "@/hooks/useIsClient";
 
 interface Driver {
   id: string;
@@ -52,11 +53,7 @@ export default function DriverPage() {
   const [acceptingRide, setAcceptingRide] = useState<string | null>(null);
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const isClient = useIsClient();
 
   useEffect(() => {
     // For simplicity, we'll treat the logged-in user as a driver if they have a profile.

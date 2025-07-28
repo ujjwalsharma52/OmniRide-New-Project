@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Mail, Phone, History, User, MapPin, IndianRupee, Car } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRideHistory } from "@/app/actions";
+import { useIsClient } from "@/hooks/useIsClient";
 
 interface UserProfile {
   firstName: string;
@@ -35,11 +36,7 @@ export default function ProfilePage() {
   const [rideHistory, setRideHistory] = useState<Ride[]>([]);
   const [isFetchingProfile, setIsFetchingProfile] = useState(true);
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const isClient = useIsClient();
 
   useEffect(() => {
     async function fetchUserProfile() {
