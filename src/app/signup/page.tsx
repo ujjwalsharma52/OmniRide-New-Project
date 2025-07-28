@@ -170,6 +170,9 @@ export default function SignupPage() {
                 )}
                 Create Account
               </Button>
+               <p className="text-xs text-center text-muted-foreground">
+                By submitting, you agree to our <Link href="#" className="underline">Terms of Service</Link>.
+              </p>
               <div className="text-center text-sm">
                 Already have an account?{" "}
                 <Link href="/login" className="underline">

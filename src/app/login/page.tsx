@@ -132,6 +132,12 @@ export default function LoginPage() {
                         Sign up
                         </Link>
                     </div>
+                     <div className="text-center text-sm">
+                        Or log in with {" "}
+                        <Link href="/phone-login" className="underline">
+                        Phone
+                        </Link>
+                    </div>
                 </CardFooter>
             </form>
         </Form>

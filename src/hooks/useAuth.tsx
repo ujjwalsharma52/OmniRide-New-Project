@@ -3,8 +3,15 @@
 
 import { useEffect, useState, createContext, useContext, ReactNode } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, DocumentData } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+
+// Augment the Window interface to include recaptchaVerifier
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+  }
+}
 
 interface UserProfile {
   firstName: string;
@@ -14,7 +21,7 @@ interface UserProfile {
 
 interface AuthContextType {
   user: User | null;
-  userProfile: UserProfile | null;
+  userProfile: UserProfile | DocumentData | null;
   loading: boolean;
 }
 
@@ -26,7 +33,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,12 +41,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (user) {
         setUser(user);
-        const userDocRef = doc(db, "users", user.uid);
+        
+        let userDocRef;
+        // Check if the user authenticated with a phone number
+        if (user.providerData.some(p => p.providerId === 'phone')) {
+            // For phone auth, we might not have a user doc yet.
+            // Or, we might need a different way to look up the user,
+            // e.g., by phone number if we stored it.
+            // For now, let's assume we create a doc with their UID.
+             userDocRef = doc(db, "users", user.uid);
+        } else {
+            userDocRef = doc(db, "users", user.uid);
+        }
+
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
+            setUserProfile(docSnap.data());
           } else {
-            setUserProfile(null);
+            // This could be a new user via phone auth.
+            // We can create a profile or handle as needed.
+            if(user.phoneNumber) {
+                setUserProfile({ phone: user.phoneNumber });
+            } else {
+                setUserProfile(null);
+            }
           }
           setLoading(false);
         });
