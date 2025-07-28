@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
         hostname: 'www.vectorlogo.zone',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.razorpay.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
