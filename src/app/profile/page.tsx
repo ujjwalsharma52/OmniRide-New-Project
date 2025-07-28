@@ -35,6 +35,11 @@ export default function ProfilePage() {
   const [rideHistory, setRideHistory] = useState<Ride[]>([]);
   const [isFetchingProfile, setIsFetchingProfile] = useState(true);
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     async function fetchUserProfile() {
@@ -117,7 +122,7 @@ export default function ProfilePage() {
               {userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "Omni Rider"}
             </CardTitle>
             <CardDescription>
-                {userProfile ? `Member since ${new Date(userProfile.createdAt.seconds * 1000).toLocaleDateString()}` : 'Loading...'}
+                {userProfile && isClient ? `Member since ${new Date(userProfile.createdAt.seconds * 1000).toLocaleDateString()}` : 'Loading...'}
             </CardDescription>
           </div>
           <Button>Edit Profile</Button>
@@ -156,7 +161,7 @@ export default function ProfilePage() {
                                             <Car className="h-5 w-5 text-primary" /> {ride.vehicleType}
                                         </div>
                                         <p className="text-sm text-muted-foreground">
-                                             {new Date(ride.createdAt).toLocaleString()}
+                                             {isClient ? new Date(ride.createdAt).toLocaleString() : ''}
                                         </p>
                                     </div>
                                     <p className="font-bold text-lg flex items-center gap-1">

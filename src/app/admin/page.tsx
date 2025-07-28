@@ -66,6 +66,11 @@ export default function AdminPage() {
   const [allRides, setAllRides] = useState<Ride[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isBanning, setIsBanning] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const { toast } = useToast();
 
@@ -227,7 +232,7 @@ export default function AdminPage() {
                                             {user.isBanned && <Badge variant="destructive" className="mt-1">Banned</Badge>}
                                         </TableCell>
                                         <TableCell>{user.email}</TableCell>
-                                        <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                                        <TableCell>{isClient ? new Date(user.createdAt).toLocaleDateString() : ''}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant={user.isBanned ? 'secondary' : 'destructive'} size="sm" onClick={() => handleBanUser(user)} disabled={isBanning === user.id}>
                                                 {isBanning === user.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Ban className="h-4 w-4" />}
@@ -270,7 +275,7 @@ export default function AdminPage() {
                                             {ride.pickupLocation} to {ride.dropoffLocation}
                                         </TableCell>
                                         <TableCell>₹{ride.price?.toFixed(2)}</TableCell>
-                                        <TableCell>{new Date(ride.createdAt).toLocaleString()}</TableCell>
+                                        <TableCell>{isClient ? new Date(ride.createdAt).toLocaleString() : ''}</TableCell>
                                         <TableCell>{getStatusBadge(ride.status)}</TableCell>
                                     </TableRow>
                                 ))}
@@ -284,5 +289,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    

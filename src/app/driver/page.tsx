@@ -52,6 +52,11 @@ export default function DriverPage() {
   const [acceptingRide, setAcceptingRide] = useState<string | null>(null);
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     // For simplicity, we'll treat the logged-in user as a driver if they have a profile.
@@ -213,7 +218,7 @@ export default function DriverPage() {
                                                     <Car className="h-5 w-5 text-primary" /> {ride.vehicleType}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
-                                                     {new Date(ride.createdAt).toLocaleString()}
+                                                     {isClient ? new Date(ride.createdAt).toLocaleString() : ''}
                                                 </p>
                                             </div>
                                             <p className="font-bold text-lg flex items-center gap-1">
