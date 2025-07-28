@@ -1,3 +1,4 @@
+
 'use server';
 
 import { suggestOptimalVehicle } from "@/ai/flows/suggest-optimal-vehicle";
@@ -131,3 +132,77 @@ export async function getDriverRides(driverId: string) {
         return { success: false, error: "Failed to fetch driver rides." };
     }
 }
+
+// --- Admin Actions ---
+
+export async function getAllUsers() {
+    try {
+        const usersSnapshot = await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc")));
+        const users = usersSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate().toISOString(),
+            }
+        });
+        return { success: true, users };
+    } catch (error) {
+        console.error("Error fetching all users:", error);
+        return { success: false, error: "Failed to fetch users." };
+    }
+}
+
+export async function getAllRides() {
+    try {
+        const ridesSnapshot = await getDocs(query(collection(db, "rides"), orderBy("createdAt", "desc")));
+        const rides = await Promise.all(ridesSnapshot.docs.map(async (d) => {
+            const data = d.data();
+            let userName = 'N/A';
+            let driverName = 'N/A';
+
+            if (data.userId) {
+                const userSnap = await getDoc(doc(db, "users", data.userId));
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    userName = `${userData.firstName} ${userData.lastName}`;
+                }
+            }
+            if (data.driverId) {
+                const driverSnap = await getDoc(doc(db, "drivers", data.driverId));
+                 if (driverSnap.exists()) {
+                    driverName = driverSnap.data().fullName;
+                }
+            }
+
+            return {
+                id: d.id,
+                ...data,
+                userName,
+                driverName,
+                createdAt: data.createdAt?.toDate().toISOString(),
+            };
+        }));
+        return { success: true, rides };
+    } catch (error) {
+        console.error("Error fetching all rides:", error);
+        return { success: false, error: "Failed to fetch rides." };
+    }
+}
+
+export async function updateUserStatus(userId: string, status: { isBanned: boolean }) {
+     try {
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, {
+            isBanned: status.isBanned
+        });
+        // In a real app, you would also disable the user in Firebase Auth
+        // using the Admin SDK.
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating user status:", error);
+        return { success: false, error: "Failed to update user status." };
+    }
+}
+
+    
