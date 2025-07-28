@@ -4,7 +4,7 @@ import { suggestOptimalVehicle } from "@/ai/flows/suggest-optimal-vehicle";
 import { analyzeFeedback } from "@/ai/flows/analyze-feedback";
 import type { SuggestOptimalVehicleInput, AnalyzeFeedbackInput } from "@/ai/schemas";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, doc, serverTimestamp, updateDoc, getDocs, query, where, orderBy } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, updateDoc, getDocs, query, where, orderBy, getDoc } from "firebase/firestore";
 
 export async function getVehicleSuggestion(input: SuggestOptimalVehicleInput) {
   try {
@@ -95,5 +95,39 @@ export async function getRideHistory(userId: string) {
     } catch (error) {
         console.error("Error fetching ride history:", error);
         return { success: false, error: "Failed to fetch ride history." };
+    }
+}
+
+export async function getDriverRides(driverId: string) {
+    try {
+        const ridesQuery = query(
+            collection(db, "rides"),
+            where("driverId", "==", driverId),
+            orderBy("createdAt", "desc")
+        );
+        const querySnapshot = await getDocs(ridesQuery);
+        const rides = await Promise.all(querySnapshot.docs.map(async (doc) => {
+            const data = doc.data();
+            let userName = 'Unknown User';
+            if (data.userId) {
+                const userRef = doc(db, "users", data.userId);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    userName = `${userData.firstName} ${userData.lastName}`;
+                }
+            }
+            return {
+                id: doc.id,
+                ...data,
+                userName,
+                createdAt: data.createdAt?.toDate().toISOString(),
+                acceptedAt: data.acceptedAt?.toDate().toISOString(),
+            };
+        }));
+        return { success: true, rides };
+    } catch (error) {
+        console.error("Error fetching driver rides:", error);
+        return { success: false, error: "Failed to fetch driver rides." };
     }
 }
