@@ -6,8 +6,10 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
-import { Car, Clock, User, Shield, Star, MapPin } from "lucide-react";
+import { Car, Clock, User, Shield, Star, MapPin, AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Ride {
     id: string;
@@ -29,6 +31,7 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
     const [driver, setDriver] = useState<Driver | null>(null);
     const [loading, setLoading] = useState(true);
     const [eta, setEta] = useState<number | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         // Generate random ETA only on the client-side after mounting
@@ -53,6 +56,15 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
 
         return () => unsubscribe();
     }, [rideId]);
+
+    const handleSos = () => {
+        toast({
+            title: "SOS Activated",
+            description: "Your live location and ride details have been shared with your emergency contacts.",
+            variant: "destructive",
+            duration: 10000,
+        });
+    }
 
     if (loading) {
         return (
@@ -163,10 +175,31 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
 
             </CardContent>
              <CardFooter className="flex-col gap-2">
-                <Button variant="outline" className="w-full">Cancel Ride</Button>
-                {ride.status === 'accepted' && (
+                <div className="flex w-full gap-2">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                         <Button variant="destructive" className="w-1/4">
+                            <AlertTriangle className="h-5 w-5" />
+                         </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure this is an emergency?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will send your live location and ride details to your emergency contacts and our safety team. Only use this in a genuine emergency.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleSos}>Confirm SOS</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    <Button variant="outline" className="flex-1">Cancel Ride</Button>
+                </div>
+                 {ride.status === 'accepted' && (
                      <Button className="w-full" onClick={onRideComplete}>Mark as Complete</Button>
-                )}
+                 )}
             </CardFooter>
         </Card>
     )
