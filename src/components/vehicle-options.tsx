@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { CarFront, Bike, Truck, Clock, IndianRupee, Car, Wallet, CreditCard, Star, Loader2, Users } from "lucide-react";
+import { CarFront, Bike, Truck, Clock, IndianRupee, Car, Wallet, CreditCard, Star, Loader2, Users, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { createRideRequest } from "@/app/actions";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Separator } from "./ui/separator";
 
 const vehicles = [
   {
@@ -85,6 +86,7 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [seats, setSeats] = useState(passengerCount);
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("wallet");
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -212,22 +214,44 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         </div>
         {selectedVehicle && selectedVehicleData && (
             <Card className="p-4 space-y-4 animate-in fade-in-50">
-                <div className="grid grid-cols-2 gap-4 items-center">
-                    <div>
-                        <Label htmlFor="seats">Seats</Label>
-                        <Input 
-                            id="seats"
-                            type="number" 
-                            min="1" 
-                            max={selectedVehicleData.capacity} 
-                            value={seats}
-                            onChange={(e) => setSeats(Math.min(Number(e.target.value), selectedVehicleData.capacity))}
-                            className="mt-1"
-                        />
+                <div>
+                    <div className="grid grid-cols-2 gap-4 items-center">
+                        <div>
+                            <Label htmlFor="seats">Seats</Label>
+                            <Input 
+                                id="seats"
+                                type="number" 
+                                min="1" 
+                                max={selectedVehicleData.capacity} 
+                                value={seats}
+                                onChange={(e) => setSeats(Math.min(Number(e.target.value), selectedVehicleData.capacity))}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div className="text-right">
+                            <p className="text-2xl font-bold"><IndianRupee className="inline h-5 w-5 -mt-1" />{calculatePrice(selectedVehicleData.ratePerKm, seats).toFixed(2)}</p>
+                            <p className="text-sm text-muted-foreground">Estimated price</p>
+                        </div>
                     </div>
-                     <div className="text-right">
-                        <p className="text-2xl font-bold"><IndianRupee className="inline h-5 w-5 -mt-1" />{calculatePrice(selectedVehicleData.ratePerKm, seats).toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">Estimated price</p>
+                </div>
+
+                <Separator />
+                
+                <div>
+                    <h4 className="text-sm font-medium mb-2">Payment Method</h4>
+                    <div className="flex gap-2">
+                         <Button variant={paymentMethod === 'wallet' ? 'default' : 'outline'} className="flex-1" onClick={() => setPaymentMethod('wallet')}>
+                            <Wallet className="mr-2 h-4 w-4" /> Wallet
+                            {paymentMethod === 'wallet' && <CheckCircle2 className="ml-auto h-4 w-4" />}
+                        </Button>
+                        <Button variant={paymentMethod === 'upi' ? 'default' : 'outline'} className="flex-1" onClick={() => setPaymentMethod('upi')}>
+                           <p className="font-bold mr-2">UPI</p>
+                           {paymentMethod === 'upi' && <CheckCircle2 className="ml-auto h-4 w-4" />}
+                        </Button>
+                         <Button variant={paymentMethod === 'card' ? 'default' : 'outline'} className="flex-1" onClick={() => setPaymentMethod('card')}>
+                            <CreditCard className="mr-2 h-4 w-4" /> Card
+                             {paymentMethod === 'card' && <CheckCircle2 className="ml-auto h-4 w-4" />}
+                        </Button>
                     </div>
                 </div>
 
