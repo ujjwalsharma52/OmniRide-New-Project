@@ -28,8 +28,6 @@ import { getVehicleSuggestion } from "@/app/actions";
 import type { SuggestOptimalVehicleOutput } from "@/ai/schemas";
 
 const formSchema = z.object({
-  pickup: z.string().min(1, "Pickup location is required"),
-  dropoff: z.string().min(1, "Dropoff location is required"),
   passengerCount: z.coerce
     .number({ invalid_type_error: "Must be a number" })
     .min(1, "At least 1 passenger")
@@ -41,7 +39,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 
-export default function VehicleSuggestionForm({ onLocationsChange, onPassengerChange }: { onLocationsChange: (pickup: string, dropoff: string) => void; onPassengerChange: (count: number) => void; }) {
+export default function VehicleSuggestionForm({ pickup, dropoff, onPassengerChange }: { pickup: string; dropoff: string; onPassengerChange: (count: number) => void; }) {
   const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,22 +47,14 @@ export default function VehicleSuggestionForm({ onLocationsChange, onPassengerCh
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      pickup: "",
-      dropoff: "",
       passengerCount: 1,
       cargoVolume: "small",
       trafficConditions: "moderate",
     },
   });
 
-  const { watch } = form;
-  const pickup = watch("pickup");
-  const dropoff = watch("dropoff");
+  const { watch, setValue } = form;
   const passengerCount = watch("passengerCount");
-
-  useEffect(() => {
-    onLocationsChange(pickup, dropoff);
-  }, [pickup, dropoff, onLocationsChange]);
 
   useEffect(() => {
     onPassengerChange(passengerCount);
@@ -72,6 +62,10 @@ export default function VehicleSuggestionForm({ onLocationsChange, onPassengerCh
 
 
   const handleSuggestion: SubmitHandler<FormValues> = async (data) => {
+    if (!pickup || !dropoff) {
+      form.setError("root", { message: "Please select pickup and dropoff locations on the map." });
+      return;
+    }
     setIsLoading(true);
     setError(null);
     setSuggestion(null);
@@ -94,47 +88,28 @@ export default function VehicleSuggestionForm({ onLocationsChange, onPassengerCh
       <h2 className="text-2xl font-bold">Where to?</h2>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSuggestion)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="pickup"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Pickup Location</FormLabel>
-                  <div className="relative">
+            <div className="space-y-2">
+                <FormLabel>Pickup Location</FormLabel>
+                <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter pickup location" 
-                        {...field}
-                        className="pl-10" 
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="dropoff"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Drop-off Location</FormLabel>
-                  <div className="relative">
+                    <Input 
+                        readOnly 
+                        value={pickup || "Select on map"}
+                        className="pl-10 font-medium"
+                    />
+                </div>
+            </div>
+            <div className="space-y-2">
+                <FormLabel>Drop-off Location</FormLabel>
+                <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter destination" 
-                        {...field} 
-                        className="pl-10" 
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+                    <Input 
+                        readOnly 
+                        value={dropoff || "Select on map"}
+                        className="pl-10 font-medium"
+                    />
+                </div>
+            </div>
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -194,6 +169,9 @@ export default function VehicleSuggestionForm({ onLocationsChange, onPassengerCh
                     </FormItem>
                 )}
             />
+            {form.formState.errors.root && (
+              <p className="text-sm font-medium text-destructive">{form.formState.errors.root.message}</p>
+            )}
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
