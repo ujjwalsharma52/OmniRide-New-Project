@@ -204,7 +204,12 @@ export default function DriverPage() {
                     <CardDescription>A log of all your completed and ongoing trips.</CardDescription>
                  </CardHeader>
                  <CardContent>
-                    {rideHistory.length > 0 ? (
+                    {!isClient || loading ? (
+                        <div className="space-y-4">
+                            <Skeleton className="h-24 w-full" />
+                            <Skeleton className="h-24 w-full" />
+                        </div>
+                    ) : rideHistory.length > 0 ? (
                         <div className="space-y-4">
                             {rideHistory.map(ride => (
                                 <Card key={ride.id}>
@@ -215,7 +220,7 @@ export default function DriverPage() {
                                                     <Car className="h-5 w-5 text-primary" /> {ride.vehicleType}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
-                                                     {isClient ? new Date(ride.createdAt).toLocaleString() : ''}
+                                                     {new Date(ride.createdAt).toLocaleString()}
                                                 </p>
                                             </div>
                                             <p className="font-bold text-lg flex items-center gap-1">

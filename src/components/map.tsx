@@ -6,6 +6,7 @@ import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import { useIsClient } from '@/hooks/useIsClient';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 const containerStyle = {
   width: '100%',
@@ -314,6 +315,7 @@ type MapProps = {
 
 function Map({ setPickup, setDropoff }: MapProps) {
     const isClient = useIsClient();
+    const { resolvedTheme } = useTheme();
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -324,21 +326,7 @@ function Map({ setPickup, setDropoff }: MapProps) {
   const [pickupMarker, setPickupMarker] = useState<google.maps.LatLngLiteral | null>(null);
   const [dropoffMarker, setDropoffMarker] = useState<google.maps.LatLngLiteral | null>(null);
   const [currentSelection, setCurrentSelection] = useState<'pickup' | 'dropoff'>('pickup');
-  const [theme, setTheme] = useState('light');
-
-  useEffect(() => {
-    if (isClient && window.matchMedia) {
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        setTheme(mediaQuery.matches ? 'dark' : 'light');
-
-        const handler = (event: MediaQueryListEvent) => {
-            setTheme(event.matches ? "dark" : "light");
-        };
-
-        mediaQuery.addEventListener('change', handler);
-        return () => mediaQuery.removeEventListener('change', handler);
-    }
-  }, [isClient]);
+  
 
   const getAddress = useCallback((latLng: google.maps.LatLngLiteral, selection: 'pickup' | 'dropoff') => {
     if (typeof window === 'undefined' || !window.google) return;
@@ -398,12 +386,16 @@ function Map({ setPickup, setDropoff }: MapProps) {
     );
   }
 
+  if (!isClient) {
+     return <div className="h-full w-full flex items-center justify-center bg-muted/50"><p>Loading Map...</p></div>
+  }
+
   return isLoaded ? (
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}
         zoom={5}
-        options={{...mapOptions, styles: theme === 'dark' ? darkMapStyles : mapOptions.styles}}
+        options={{...mapOptions, styles: resolvedTheme === 'dark' ? darkMapStyles : mapOptions.styles}}
         onClick={onMapClick}
       >
         {pickupMarker && (

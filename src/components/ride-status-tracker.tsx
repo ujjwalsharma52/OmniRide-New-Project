@@ -34,14 +34,16 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
     const { toast } = useToast();
 
     useEffect(() => {
-        // Generate random ETA only on the client-side after mounting
-        setEta(Math.floor(Math.random() * 5) + 2);
-
         const rideRef = doc(db, "rides", rideId);
         const unsubscribe = onSnapshot(rideRef, async (docSnap) => {
             if (docSnap.exists()) {
                 const rideData = { id: docSnap.id, ...docSnap.data() } as Ride;
                 setRide(rideData);
+
+                // Generate random ETA only on the client-side after mounting, and only if accepted
+                if (rideData.status === 'accepted') {
+                    setEta(Math.floor(Math.random() * 5) + 2);
+                }
 
                 if (rideData.driverId) {
                     const driverRef = doc(db, "drivers", rideData.driverId);
