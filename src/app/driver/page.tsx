@@ -6,15 +6,16 @@ import { collection, onSnapshot, query, where, DocumentData } from "firebase/fir
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { List, User, Car, MapPin, IndianRupee, Loader2, Users, Briefcase, History, CheckCircle } from "lucide-react";
+import { List, User, Car, MapPin, IndianRupee, Loader2, Users, Briefcase, History, CheckCircle, KeyRound, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
-import { acceptRide, getDriverRides } from "@/app/actions";
+import { acceptRide, getDriverRides, startRide } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useIsClient } from "@/hooks/useIsClient";
+import { Input } from "@/components/ui/input";
 
 interface Driver {
   id: string;
@@ -49,9 +50,11 @@ const MetricCard = ({ title, value, icon: Icon }: { title: string; value: string
 export default function DriverPage() {
   const [driver, setDriver] = useState<Driver | null>(null);
   const [availableRides, setAvailableRides] = useState<Ride[]>([]);
-  const [rideHistory, setRideHistory] = useState<Ride[]>([]);
+  const [myRides, setMyRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [acceptingRide, setAcceptingRide] = useState<string | null>(null);
+  const [startingRide, setStartingRide] = useState<string | null>(null);
+  const [otp, setOtp] = useState<{[key: string]: string}>({});
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const isClient = useIsClient();
@@ -61,15 +64,17 @@ export default function DriverPage() {
       const currentDriver = { id: user.uid, fullName: `${userProfile.firstName} ${userProfile.lastName}` };
       setDriver(currentDriver);
       
-      const ridesQuery = query(collection(db, "rides"), where("status", "in", ["pending", "accepted"]));
+      const ridesQuery = query(collection(db, "rides"), where("status", "in", ["pending", "accepted", "ongoing"]));
       const unsubscribe = onSnapshot(ridesQuery, (querySnapshot) => {
           const ridesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
           
           const pendingRides = ridesList.filter(ride => ride.status === 'pending');
           setAvailableRides(pendingRides);
 
+          const driverRides = ridesList.filter(ride => ride.driverId === currentDriver.id && (ride.status === 'accepted' || ride.status === 'ongoing'));
+          setMyRides(driverRides);
+          
           fetchRideHistory(currentDriver.id);
-
           setLoading(false);
       }, (error) => {
           console.error("Error fetching rides: ", error);
@@ -81,12 +86,13 @@ export default function DriverPage() {
         setLoading(false);
     }
   }, [user, userProfile]);
-
+  
+  const [rideHistory, setRideHistory] = useState<Ride[]>([]);
 
   async function fetchRideHistory(driverId: string) {
       const result = await getDriverRides(driverId);
       if (result.success && result.rides) {
-          setRideHistory(result.rides);
+        setRideHistory(result.rides);
       }
   }
   
@@ -106,7 +112,6 @@ export default function DriverPage() {
             title: "Ride Accepted!",
             description: "You are on your way to the pickup location."
         });
-        fetchRideHistory(driver.id);
     } else {
         toast({
             title: "Failed to Accept",
@@ -117,8 +122,30 @@ export default function DriverPage() {
     setAcceptingRide(null);
   }
 
-  const totalEarnings = rideHistory.reduce((sum, ride) => sum + (ride.status === 'accepted' ? ride.price : 0), 0);
-  const completedTrips = rideHistory.filter(ride => ride.status === 'accepted').length;
+  const handleStartRide = async (rideId: string) => {
+    if (!otp[rideId] || otp[rideId].length !== 4) {
+        toast({ title: "Invalid OTP", description: "Please enter the 4-digit OTP from the rider.", variant: "destructive" });
+        return;
+    }
+    setStartingRide(rideId);
+    const result = await startRide(rideId, otp[rideId]);
+    if (result.success) {
+        toast({ title: "Ride Started!", description: "Have a safe trip." });
+    } else {
+        toast({ title: "Failed to Start Ride", description: result.error, variant: "destructive" });
+    }
+    setStartingRide(null);
+  }
+
+  const handleOtpChange = (rideId: string, value: string) => {
+    setOtp(prev => ({ ...prev, [rideId]: value }));
+  }
+
+  const totalEarnings = rideHistory.reduce((sum, ride) => sum + (ride.status === 'completed' ? ride.price : 0), 0);
+  const completedTrips = rideHistory.filter(ride => ride.status === 'completed').length;
+  const ongoingRide = myRides.find(ride => ride.status === 'ongoing');
+  const acceptedRides = myRides.filter(ride => ride.status === 'accepted');
+
 
   return (
     <div className="container py-8">
@@ -131,11 +158,32 @@ export default function DriverPage() {
           <Link href="/driver/register">Become a Driver</Link>
         </Button>
       </div>
+
+       {ongoingRide && (
+        <Card className="mb-6 bg-primary/10 border-primary/20">
+            <CardHeader>
+                <CardTitle className="text-primary flex items-center gap-2"><Car className="animate-pulse" /> Ongoing Ride</CardTitle>
+                <CardDescription>You are currently on a trip. Drive safely!</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="text-sm space-y-2">
+                    <p className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <strong>Passenger:</strong> {ongoingRide.userName}</p>
+                    <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>To:</strong> {ongoingRide.dropoffLocation}</p>
+                </div>
+                 <div className="flex justify-between items-center mt-4">
+                    <p className="font-bold text-lg flex items-center gap-1">
+                        <IndianRupee className="h-5 w-5" />{ongoingRide.price.toFixed(2)}
+                    </p>
+                    <Button variant="destructive" size="sm"><AlertTriangle className="h-4 w-4 mr-2" />SOS</Button>
+                </div>
+            </CardContent>
+        </Card>
+      )}
       
       <Tabs defaultValue="available">
         <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="available">Available Rides</TabsTrigger>
-            <TabsTrigger value="history">My Trips</TabsTrigger>
+            <TabsTrigger value="available">Available Rides ({availableRides.length})</TabsTrigger>
+            <TabsTrigger value="history">My Trips ({acceptedRides.length})</TabsTrigger>
             <TabsTrigger value="earnings">Earnings</TabsTrigger>
         </TabsList>
         <TabsContent value="available" className="mt-6">
@@ -148,7 +196,7 @@ export default function DriverPage() {
                   </div>
                 </CardTitle>
                 <CardDescription>
-                  New ride requests will appear here. Refresh to see the latest.
+                  New ride requests will appear here automatically.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -186,7 +234,7 @@ export default function DriverPage() {
                     </div>
                 ) : (
                     <div className="text-center py-12 text-muted-foreground">
-                        <p>No active ride requests at the moment.</p>
+                        <p>No new ride requests at the moment.</p>
                     </div>
                 )}
               </CardContent>
@@ -203,12 +251,12 @@ export default function DriverPage() {
                  <CardContent>
                     {!isClient || loading ? (
                         <div className="space-y-4">
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-24 w-full" />
+                            <Skeleton className="h-32 w-full" />
+                            <Skeleton className="h-32 w-full" />
                         </div>
-                    ) : rideHistory.length > 0 ? (
+                    ) : acceptedRides.length > 0 ? (
                         <div className="space-y-4">
-                            {rideHistory.map(ride => (
+                            {acceptedRides.map(ride => (
                                 <Card key={ride.id}>
                                     <CardContent className="p-4 grid gap-3">
                                         <div className="flex justify-between items-start">
@@ -217,7 +265,7 @@ export default function DriverPage() {
                                                     <Car className="h-5 w-5 text-primary" /> {ride.vehicleType}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
-                                                     {isClient ? new Date(ride.createdAt).toLocaleString() : ''}
+                                                     Accepted on {isClient ? new Date(ride.createdAt).toLocaleString() : ''}
                                                 </p>
                                             </div>
                                             <p className="font-bold text-lg flex items-center gap-1">
@@ -228,18 +276,30 @@ export default function DriverPage() {
                                          <div className="text-sm space-y-2">
                                             <p className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <strong>Passenger:</strong> {ride.userName}</p>
                                             <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>From:</strong> {ride.pickupLocation}</p>
-                                            <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>To:</strong> {ride.dropoffLocation}</p>
                                          </div>
-                                        <div className="flex items-center justify-end text-sm text-muted-foreground">
-                                            <span className={`capitalize font-semibold ${ride.status === 'accepted' ? 'text-green-600' : 'text-yellow-600'}`}>{ride.status}</span>
-                                        </div>
+                                         <Separator />
+                                         <div className="space-y-2">
+                                            <label htmlFor={`otp-${ride.id}`} className="text-sm font-medium flex items-center gap-2"><KeyRound className="h-4 w-4" /> Rider's OTP</label>
+                                            <div className="flex gap-2">
+                                                <Input 
+                                                    id={`otp-${ride.id}`} 
+                                                    placeholder="Enter 4-digit OTP" 
+                                                    maxLength={4}
+                                                    value={otp[ride.id] || ''}
+                                                    onChange={(e) => handleOtpChange(ride.id, e.target.value)}
+                                                />
+                                                <Button onClick={() => handleStartRide(ride.id)} disabled={startingRide === ride.id}>
+                                                    {startingRide === ride.id ? <Loader2 className="animate-spin" /> : "Start Ride"}
+                                                </Button>
+                                            </div>
+                                         </div>
                                     </CardContent>
                                 </Card>
                             ))}
                         </div>
                     ) : (
                         <div className="text-center py-12 text-muted-foreground">
-                            <p>You haven't completed any trips yet.</p>
+                            <p>You haven't accepted any trips yet.</p>
                         </div>
                     )}
                  </CardContent>
@@ -255,3 +315,5 @@ export default function DriverPage() {
     </div>
   );
 }
+
+    

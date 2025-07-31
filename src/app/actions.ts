@@ -63,10 +63,12 @@ export async function createRideRequest(rideData: {
 export async function acceptRide(rideId: string, driverId: string) {
     try {
         const rideRef = doc(db, "rides", rideId);
+        const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
         await updateDoc(rideRef, {
             status: "accepted",
             driverId: driverId,
-            acceptedAt: serverTimestamp()
+            acceptedAt: serverTimestamp(),
+            otp: otp
         });
         return { success: true };
     } catch (error) {
@@ -74,6 +76,33 @@ export async function acceptRide(rideId: string, driverId: string) {
         return { success: false, error: "Failed to accept ride." };
     }
 }
+
+export async function startRide(rideId: string, otp: string) {
+    try {
+        const rideRef = doc(db, "rides", rideId);
+        const rideSnap = await getDoc(rideRef);
+
+        if (!rideSnap.exists()) {
+            return { success: false, error: "Ride not found." };
+        }
+
+        const rideData = rideSnap.data();
+        if (rideData.otp !== otp) {
+            return { success: false, error: "Invalid OTP." };
+        }
+
+        await updateDoc(rideRef, {
+            status: "ongoing",
+            startedAt: serverTimestamp()
+        });
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error starting ride:", error);
+        return { success: false, error: "Failed to start ride." };
+    }
+}
+
 
 export async function getRideHistory(userId: string) {
     try {
@@ -204,5 +233,7 @@ export async function updateUserStatus(userId: string, status: { isBanned: boole
         return { success: false, error: "Failed to update user status." };
     }
 }
+
+    
 
     

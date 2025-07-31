@@ -6,7 +6,7 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
-import { Car, Clock, User, Shield, Star, MapPin, AlertTriangle } from "lucide-react";
+import { Car, Clock, User, Shield, Star, MapPin, AlertTriangle, KeyRound } from "lucide-react";
 import { Button } from "./ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ interface Ride {
     dropoffLocation: string;
     status: string;
     driverId?: string;
+    otp?: string;
 }
 
 interface Driver {
@@ -41,11 +42,11 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
                 setRide(rideData);
 
                 // Generate random ETA only on the client-side after mounting, and only if accepted
-                if (rideData.status === 'accepted') {
+                if (rideData.status === 'accepted' && !eta) {
                     setEta(Math.floor(Math.random() * 5) + 2);
                 }
 
-                if (rideData.driverId) {
+                if (rideData.driverId && !driver) {
                     const driverRef = doc(db, "drivers", rideData.driverId);
                     const driverSnap = await getDoc(driverRef);
                     if (driverSnap.exists()) {
@@ -57,7 +58,7 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
         });
 
         return () => unsubscribe();
-    }, [rideId]);
+    }, [rideId, driver, eta]);
 
     const handleSos = () => {
         toast({
@@ -108,7 +109,13 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
                  {ride.status === 'accepted' && driver && (
                     <>
                         <CardTitle>Your driver is on the way!</CardTitle>
-                        <CardDescription>Get ready to meet your driver at the pickup location.</CardDescription>
+                        <CardDescription>Share the OTP with your driver to start the trip.</CardDescription>
+                    </>
+                )}
+                 {ride.status === 'ongoing' && driver && (
+                    <>
+                        <CardTitle className="text-primary">Ride in Progress</CardTitle>
+                        <CardDescription>Enjoy your trip! You can track your progress here.</CardDescription>
                     </>
                 )}
             </CardHeader>
@@ -137,6 +144,10 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
                 
                 {ride.status === 'accepted' && driver && (
                      <div className="space-y-4">
+                        <div className="p-4 bg-accent/10 rounded-lg text-center border-accent border-2 border-dashed">
+                             <h4 className="text-sm font-semibold text-accent-foreground flex items-center justify-center gap-2"><KeyRound className="h-4 w-4" /> Your OTP</h4>
+                             <p className="text-4xl font-bold tracking-widest text-accent-foreground">{ride.otp}</p>
+                        </div>
                         <div className="flex items-center justify-between p-4 border rounded-lg">
                             <div className="flex items-center gap-4">
                                 <div className="bg-primary/10 p-3 rounded-full">
@@ -174,6 +185,15 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
                         </div>
                     </div>
                 )}
+                
+                {ride.status === 'ongoing' && driver && (
+                     <div className="space-y-4 text-center py-4">
+                        <Car className="h-16 w-16 text-primary mx-auto" />
+                        <h3 className="text-lg font-semibold">You're on your way!</h3>
+                        <p className="text-muted-foreground">Driver: {driver.fullName}</p>
+                    </div>
+                )}
+
 
             </CardContent>
              <CardFooter className="flex-col gap-2">
@@ -199,10 +219,12 @@ export default function RideStatusTracker({ rideId, onRideComplete }: { rideId: 
                     </AlertDialog>
                     <Button variant="outline" className="flex-1">Cancel Ride</Button>
                 </div>
-                 {ride.status === 'accepted' && (
+                 {ride.status === 'ongoing' && (
                      <Button className="w-full" onClick={onRideComplete}>Mark as Complete</Button>
                  )}
             </CardFooter>
         </Card>
     )
 }
+
+    
