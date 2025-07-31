@@ -130,23 +130,21 @@ export async function getRideHistory(userId: string) {
 
 export async function getDriverRides(driverId: string) {
     try {
+        // Fetch all users first to avoid N+1 queries.
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const usersMap = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data()]));
+
         const ridesQuery = query(
             collection(db, "rides"),
             where("driverId", "==", driverId),
             orderBy("createdAt", "desc")
         );
         const querySnapshot = await getDocs(ridesQuery);
-        const rides = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const rides = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            let userName = 'Unknown User';
-            if (data.userId) {
-                const userRef = doc(db, "users", data.userId);
-                const userSnap = await getDoc(userRef);
-                if (userSnap.exists()) {
-                    const userData = userSnap.data();
-                    userName = `${userData.firstName} ${userData.lastName}`;
-                }
-            }
+            const user = usersMap.get(data.userId);
+            const userName = user ? `${user.firstName} ${user.lastName}` : 'Unknown User';
+            
             return {
                 id: doc.id,
                 ...data,
@@ -154,7 +152,7 @@ export async function getDriverRides(driverId: string) {
                 createdAt: data.createdAt?.toDate().toISOString(),
                 acceptedAt: data.acceptedAt?.toDate().toISOString(),
             };
-        }));
+        });
         return { success: true, rides };
     } catch (error) {
         console.error("Error fetching driver rides:", error);
@@ -184,24 +182,28 @@ export async function getAllUsers() {
 
 export async function getAllRides() {
     try {
+        // 1. Fetch all users and drivers first to create a lookup map.
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const usersMap = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data()]));
+
+        const driversSnapshot = await getDocs(collection(db, "drivers"));
+        const driversMap = new Map(driversSnapshot.docs.map(doc => [doc.id, doc.data()]));
+
+        // 2. Fetch all rides
         const ridesSnapshot = await getDocs(query(collection(db, "rides"), orderBy("createdAt", "desc")));
-        const rides = await Promise.all(ridesSnapshot.docs.map(async (d) => {
+        
+        // 3. Process rides using the maps (no more lookups in a loop)
+        const rides = ridesSnapshot.docs.map(d => {
             const data = d.data();
             let userName = 'N/A';
             let driverName = 'N/A';
 
-            if (data.userId) {
-                const userSnap = await getDoc(doc(db, "users", data.userId));
-                if (userSnap.exists()) {
-                    const userData = userSnap.data();
-                    userName = `${userData.firstName} ${userData.lastName}`;
-                }
+            if (data.userId && usersMap.has(data.userId)) {
+                const userData = usersMap.get(data.userId);
+                userName = `${userData.firstName} ${userData.lastName}`;
             }
-            if (data.driverId) {
-                const driverSnap = await getDoc(doc(db, "drivers", data.driverId));
-                 if (driverSnap.exists()) {
-                    driverName = driverSnap.data().fullName;
-                }
+            if (data.driverId && driversMap.has(data.driverId)) {
+                driverName = driversMap.get(data.driverId).fullName;
             }
 
             return {
@@ -211,13 +213,14 @@ export async function getAllRides() {
                 driverName,
                 createdAt: data.createdAt?.toDate().toISOString(),
             };
-        }));
+        });
         return { success: true, rides };
     } catch (error) {
         console.error("Error fetching all rides:", error);
         return { success: false, error: "Failed to fetch rides." };
     }
 }
+
 
 export async function updateUserStatus(userId: string, status: { isBanned: boolean }) {
      try {
@@ -233,7 +236,3 @@ export async function updateUserStatus(userId: string, status: { isBanned: boole
         return { success: false, error: "Failed to update user status." };
     }
 }
-
-    
-
-    

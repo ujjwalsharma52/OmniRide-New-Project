@@ -2,11 +2,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where, DocumentData } from "firebase/firestore";
+import { collection, onSnapshot, query, where, DocumentData, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { List, User, Car, MapPin, IndianRupee, Loader2, Users, Briefcase, History, CheckCircle, KeyRound, AlertTriangle } from "lucide-react";
+import { List, User, Car, MapPin, IndianRupee, Loader2, Users, History, CheckCircle, KeyRound, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { acceptRide, getDriverRides, startRide } from "@/app/actions";
@@ -31,9 +31,16 @@ interface Ride {
     status: string;
     passengerCount: number;
     createdAt: string;
+    acceptedAt?: string;
+    userId: string;
     userName?: string;
     driverId?: string;
 }
+
+interface UserMap {
+    [key: string]: string;
+}
+
 
 const MetricCard = ({ title, value, icon: Icon }: { title: string; value: string; icon: React.ElementType }) => (
     <Card>
@@ -58,41 +65,60 @@ export default function DriverPage() {
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const isClient = useIsClient();
+  const [rideHistory, setRideHistory] = useState<Ride[]>([]);
+  const [usersMap, setUsersMap] = useState<UserMap>({});
 
   useEffect(() => {
-    if (user && userProfile) {
-      const currentDriver = { id: user.uid, fullName: `${userProfile.firstName} ${userProfile.lastName}` };
-      setDriver(currentDriver);
-      
-      const ridesQuery = query(collection(db, "rides"), where("status", "in", ["pending", "accepted", "ongoing"]));
-      const unsubscribe = onSnapshot(ridesQuery, (querySnapshot) => {
-          const ridesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
-          
-          const pendingRides = ridesList.filter(ride => ride.status === 'pending');
-          setAvailableRides(pendingRides);
+    async function fetchInitialData() {
+        if (user) {
+            setLoading(true);
+            const currentDriver = { id: user.uid, fullName: `${userProfile?.firstName} ${userProfile?.lastName}` };
+            setDriver(currentDriver);
+            
+            // Pre-fetch all users to build a map for quick lookup
+            const usersSnapshot = await getDocs(collection(db, "users"));
+            const uMap: UserMap = {};
+            usersSnapshot.forEach(doc => {
+                const data = doc.data();
+                uMap[doc.id] = `${data.firstName} ${data.lastName}`;
+            });
+            setUsersMap(uMap);
 
-          const driverRides = ridesList.filter(ride => ride.driverId === currentDriver.id && (ride.status === 'accepted' || ride.status === 'ongoing'));
-          setMyRides(driverRides);
-          
-          fetchRideHistory(currentDriver.id);
-          setLoading(false);
-      }, (error) => {
-          console.error("Error fetching rides: ", error);
-          setLoading(false);
-      });
+            await fetchRideHistory(user.uid);
+            
+            // Setup real-time listeners
+            const q = query(collection(db, "rides"), where("status", "in", ["pending", "accepted", "ongoing"]));
+            const unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const ridesList: Ride[] = [];
+                querySnapshot.forEach(doc => {
+                    ridesList.push({ id: doc.id, ...doc.data() } as Ride);
+                });
+                
+                // Filter rides on the client
+                const pending = ridesList.filter(ride => ride.status === 'pending');
+                const accepted = ridesList.filter(ride => ride.driverId === user.uid && (ride.status === 'accepted' || ride.status === 'ongoing'));
+                
+                setAvailableRides(pending);
+                setMyRides(accepted);
+                setLoading(false);
+            }, (error) => {
+                console.error("Error fetching rides: ", error);
+                setLoading(false);
+            });
 
-      return () => unsubscribe();
-    } else {
-        setLoading(false);
+            return () => unsubscribe();
+        } else {
+            setLoading(false);
+        }
     }
+
+    fetchInitialData();
   }, [user, userProfile]);
-  
-  const [rideHistory, setRideHistory] = useState<Ride[]>([]);
 
   async function fetchRideHistory(driverId: string) {
       const result = await getDriverRides(driverId);
       if (result.success && result.rides) {
-        setRideHistory(result.rides);
+        setRideHistory(result.rides as Ride[]);
       }
   }
   
@@ -144,7 +170,7 @@ export default function DriverPage() {
   const totalEarnings = rideHistory.reduce((sum, ride) => sum + (ride.status === 'completed' ? ride.price : 0), 0);
   const completedTrips = rideHistory.filter(ride => ride.status === 'completed').length;
   const ongoingRide = myRides.find(ride => ride.status === 'ongoing');
-  const acceptedRides = myRides.filter(ride => ride.status === 'accepted');
+  const acceptedButNotStartedRides = myRides.filter(ride => ride.status === 'accepted');
 
 
   return (
@@ -167,7 +193,7 @@ export default function DriverPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-sm space-y-2">
-                    <p className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <strong>Passenger:</strong> {ongoingRide.userName}</p>
+                    <p className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <strong>Passenger:</strong> {usersMap[ongoingRide.userId] || 'Loading...'}</p>
                     <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>To:</strong> {ongoingRide.dropoffLocation}</p>
                 </div>
                  <div className="flex justify-between items-center mt-4">
@@ -183,7 +209,7 @@ export default function DriverPage() {
       <Tabs defaultValue="available">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="available">Available Rides ({availableRides.length})</TabsTrigger>
-            <TabsTrigger value="history">My Trips ({acceptedRides.length})</TabsTrigger>
+            <TabsTrigger value="history">My Trips ({acceptedButNotStartedRides.length})</TabsTrigger>
             <TabsTrigger value="earnings">Earnings</TabsTrigger>
         </TabsList>
         <TabsContent value="available" className="mt-6">
@@ -244,7 +270,7 @@ export default function DriverPage() {
              <Card>
                  <CardHeader>
                     <CardTitle>
-                      <div className="flex items-center gap-2"><History className="h-5 w-5" />Trip History</div>
+                      <div className="flex items-center gap-2"><History className="h-5 w-5" />My Accepted Trips</div>
                     </CardTitle>
                     <CardDescription>A log of all your completed and ongoing trips.</CardDescription>
                  </CardHeader>
@@ -254,9 +280,9 @@ export default function DriverPage() {
                             <Skeleton className="h-32 w-full" />
                             <Skeleton className="h-32 w-full" />
                         </div>
-                    ) : acceptedRides.length > 0 ? (
+                    ) : acceptedButNotStartedRides.length > 0 ? (
                         <div className="space-y-4">
-                            {acceptedRides.map(ride => (
+                            {acceptedButNotStartedRides.map(ride => (
                                 <Card key={ride.id}>
                                     <CardContent className="p-4 grid gap-3">
                                         <div className="flex justify-between items-start">
@@ -265,7 +291,7 @@ export default function DriverPage() {
                                                     <Car className="h-5 w-5 text-primary" /> {ride.vehicleType}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
-                                                     Accepted on {isClient ? new Date(ride.createdAt).toLocaleString() : ''}
+                                                     Accepted on {isClient && ride.acceptedAt ? new Date(ride.acceptedAt).toLocaleString() : ''}
                                                 </p>
                                             </div>
                                             <p className="font-bold text-lg flex items-center gap-1">
@@ -274,7 +300,7 @@ export default function DriverPage() {
                                         </div>
                                         <Separator />
                                          <div className="text-sm space-y-2">
-                                            <p className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <strong>Passenger:</strong> {ride.userName}</p>
+                                            <p className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /> <strong>Passenger:</strong> {usersMap[ride.userId] || 'Loading...'}</p>
                                             <p className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 text-muted-foreground"/> <strong>From:</strong> {ride.pickupLocation}</p>
                                          </div>
                                          <Separator />
@@ -315,5 +341,3 @@ export default function DriverPage() {
     </div>
   );
 }
-
-    
