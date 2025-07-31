@@ -31,6 +31,7 @@ interface Ride {
     passengerCount: number;
     createdAt: string;
     userName?: string;
+    driverId?: string;
 }
 
 const MetricCard = ({ title, value, icon: Icon }: { title: string; value: string; icon: React.ElementType }) => (
@@ -59,34 +60,40 @@ export default function DriverPage() {
     // For simplicity, we'll treat the logged-in user as a driver if they have a profile.
     // A real app might have a separate "isDriver" flag.
     if (user && userProfile) {
-      setDriver({ id: user.uid, fullName: `${userProfile.firstName} ${userProfile.lastName}` });
+      const currentDriver = { id: user.uid, fullName: `${userProfile.firstName} ${userProfile.lastName}` };
+      setDriver(currentDriver);
+      
+      // Listen for new ride requests and driver's active rides
+      const ridesQuery = query(collection(db, "rides"), where("status", "in", ["pending", "accepted"]));
+      const unsubscribe = onSnapshot(ridesQuery, (querySnapshot) => {
+          const ridesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
+          
+          // Filter for rides that are pending (available to all drivers)
+          const pendingRides = ridesList.filter(ride => ride.status === 'pending');
+          setAvailableRides(pendingRides);
+
+          // Initially load full history, then prepend accepted rides
+          fetchRideHistory(currentDriver.id);
+
+          setLoading(false);
+      }, (error) => {
+          console.error("Error fetching rides: ", error);
+          setLoading(false);
+      });
+
+      return () => unsubscribe();
+    } else {
+        setLoading(false);
     }
-
-    // Listen for new ride requests
-    const ridesQuery = query(collection(db, "rides"), where("status", "==", "pending"));
-    const unsubscribe = onSnapshot(ridesQuery, (querySnapshot) => {
-        const ridesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
-        setAvailableRides(ridesList);
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching rides: ", error);
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
   }, [user, userProfile]);
 
-  useEffect(() => {
-    async function fetchRideHistory() {
-        if (driver) {
-            const result = await getDriverRides(driver.id);
-            if (result.success && result.rides) {
-                setRideHistory(result.rides);
-            }
-        }
-    }
-    fetchRideHistory();
-  }, [driver])
+
+  async function fetchRideHistory(driverId: string) {
+      const result = await getDriverRides(driverId);
+      if (result.success && result.rides) {
+          setRideHistory(result.rides);
+      }
+  }
   
   const handleAcceptRide = async (rideId: string) => {
     if (!driver) {
@@ -104,12 +111,9 @@ export default function DriverPage() {
             title: "Ride Accepted!",
             description: "You are on your way to the pickup location."
         });
-        // Optimistically move the ride from available to history
-        const acceptedRide = availableRides.find(r => r.id === rideId);
-        if (acceptedRide) {
-            setAvailableRides(prev => prev.filter(r => r.id !== rideId));
-            setRideHistory(prev => [{...acceptedRide, status: 'accepted'}, ...prev]);
-        }
+        // The onSnapshot listener will handle UI updates automatically.
+        // But we can trigger a manual history refresh to be safe.
+        fetchRideHistory(driver.id);
     } else {
         toast({
             title: "Failed to Accept",
@@ -258,3 +262,5 @@ export default function DriverPage() {
     </div>
   );
 }
+
+    
