@@ -57,22 +57,17 @@ export default function DriverPage() {
   const isClient = useIsClient();
 
   useEffect(() => {
-    // For simplicity, we'll treat the logged-in user as a driver if they have a profile.
-    // A real app might have a separate "isDriver" flag.
     if (user && userProfile) {
       const currentDriver = { id: user.uid, fullName: `${userProfile.firstName} ${userProfile.lastName}` };
       setDriver(currentDriver);
       
-      // Listen for new ride requests and driver's active rides
       const ridesQuery = query(collection(db, "rides"), where("status", "in", ["pending", "accepted"]));
       const unsubscribe = onSnapshot(ridesQuery, (querySnapshot) => {
           const ridesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
           
-          // Filter for rides that are pending (available to all drivers)
           const pendingRides = ridesList.filter(ride => ride.status === 'pending');
           setAvailableRides(pendingRides);
 
-          // Initially load full history, then prepend accepted rides
           fetchRideHistory(currentDriver.id);
 
           setLoading(false);
@@ -111,8 +106,6 @@ export default function DriverPage() {
             title: "Ride Accepted!",
             description: "You are on your way to the pickup location."
         });
-        // The onSnapshot listener will handle UI updates automatically.
-        // But we can trigger a manual history refresh to be safe.
         fetchRideHistory(driver.id);
     } else {
         toast({
@@ -224,7 +217,7 @@ export default function DriverPage() {
                                                     <Car className="h-5 w-5 text-primary" /> {ride.vehicleType}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground">
-                                                     {new Date(ride.createdAt).toLocaleString()}
+                                                     {isClient ? new Date(ride.createdAt).toLocaleString() : ''}
                                                 </p>
                                             </div>
                                             <p className="font-bold text-lg flex items-center gap-1">
@@ -262,5 +255,3 @@ export default function DriverPage() {
     </div>
   );
 }
-
-    
