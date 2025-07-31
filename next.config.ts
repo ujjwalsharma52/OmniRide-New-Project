@@ -43,4 +43,4 @@ const nextConfig: NextConfig = {
 
 const withPwaConfig = withPWA(pwaConfig);
 
-export default process.env.npm_config_turbopack ? nextConfig : withPwaConfig(nextConfig);
+export default withPwaConfig(nextConfig);
