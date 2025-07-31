@@ -316,10 +316,11 @@ type MapProps = {
 function Map({ setPickup, setDropoff }: MapProps) {
     const isClient = useIsClient();
     const { resolvedTheme } = useTheme();
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
+    googleMapsApiKey: apiKey
   });
 
   const [map, setMap] = useState(null);
@@ -329,27 +330,25 @@ function Map({ setPickup, setDropoff }: MapProps) {
   
 
   const getAddress = useCallback((latLng: google.maps.LatLngLiteral, selection: 'pickup' | 'dropoff') => {
-    if (typeof window === 'undefined' || !window.google) return;
+    const fallbackAddress = `Lat: ${latLng.lat.toFixed(4)}, Lng: ${latLng.lng.toFixed(4)}`;
+    const setAddress = selection === 'pickup' ? setPickup : setDropoff;
+
+    if (typeof window === 'undefined' || !window.google || !apiKey) {
+      setAddress(fallbackAddress);
+      return;
+    }
+
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ location: latLng }, (results, status) => {
       if (status === 'OK' && results && results[0]) {
         const address = results[0].formatted_address;
-        if (selection === 'pickup') {
-          setPickup(address);
-        } else {
-          setDropoff(address);
-        }
+        setAddress(address);
       } else {
         console.error('Geocoder failed due to: ' + status);
-        const fallbackAddress = `Lat: ${latLng.lat.toFixed(4)}, Lng: ${latLng.lng.toFixed(4)}`;
-         if (selection === 'pickup') {
-          setPickup(fallbackAddress);
-        } else {
-          setDropoff(fallbackAddress);
-        }
+        setAddress(fallbackAddress);
       }
     });
-  }, [setPickup, setDropoff]);
+  }, [setPickup, setDropoff, apiKey]);
 
   const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
     if (!e.latLng) return;
