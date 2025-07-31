@@ -8,7 +8,6 @@ import VehicleOptions from "@/components/vehicle-options";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RatingDialog } from "@/components/rating-dialog";
 import RideStatusTracker from "@/components/ride-status-tracker";
-import Map from "@/components/map";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Home() {
@@ -34,37 +33,32 @@ export default function Home() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 h-[calc(100vh-4rem)]">
-      <aside className="flex flex-col">
-        <ScrollArea className="h-full">
-            <div className="p-6">
-                <VehicleSuggestionForm pickup={pickup} dropoff={dropoff} onPassengerChange={setPassengerCount} />
-            </div>
+    <div className="container max-w-2xl mx-auto py-8">
+        <aside className="flex flex-col space-y-6">
+            <VehicleSuggestionForm 
+                onPickupChange={setPickup} 
+                onDropoffChange={setDropoff} 
+                onPassengerChange={setPassengerCount} 
+            />
             <Separator />
-            <div className="p-6">
-                <VehicleOptions 
-                pickup={pickup} 
-                dropoff={dropoff} 
-                passengerCount={passengerCount}
-                onRideRequested={handleNewRide} 
-                />
-            </div>
-             <div className="p-6 border-t">
-                <Card>
-                <CardHeader>
-                    <CardTitle>Finished a ride?</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">Let us know how it went.</p>
-                    <RatingDialog />
-                </CardContent>
-                </Card>
-            </div>
-        </ScrollArea>
-      </aside>
-      <main className="h-full w-full">
-        <Map setPickup={setPickup} setDropoff={setDropoff} />
-      </main>
+            <VehicleOptions 
+            pickup={pickup} 
+            dropoff={dropoff} 
+            passengerCount={passengerCount}
+            onRideRequested={handleNewRide} 
+            />
+            <div className="pt-6 border-t">
+            <Card>
+            <CardHeader>
+                <CardTitle>Finished a ride?</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">Let us know how it went.</p>
+                <RatingDialog />
+            </CardContent>
+            </Card>
+        </div>
+        </aside>
     </div>
   );
 }

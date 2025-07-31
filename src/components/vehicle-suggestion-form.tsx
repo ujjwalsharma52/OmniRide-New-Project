@@ -28,6 +28,8 @@ import { getVehicleSuggestion } from "@/app/actions";
 import type { SuggestOptimalVehicleOutput } from "@/ai/schemas";
 
 const formSchema = z.object({
+  pickup: z.string().min(1, "Pickup location is required"),
+  dropoff: z.string().min(1, "Dropoff location is required"),
   passengerCount: z.coerce
     .number({ invalid_type_error: "Must be a number" })
     .min(1, "At least 1 passenger")
@@ -39,7 +41,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 
-export default function VehicleSuggestionForm({ pickup, dropoff, onPassengerChange }: { pickup: string; dropoff: string; onPassengerChange: (count: number) => void; }) {
+export default function VehicleSuggestionForm({ onPickupChange, onDropoffChange, onPassengerChange }: { onPickupChange: (val: string) => void; onDropoffChange: (val: string) => void; onPassengerChange: (count: number) => void; }) {
   const [suggestion, setSuggestion] = useState<SuggestOptimalVehicleOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,8 @@ export default function VehicleSuggestionForm({ pickup, dropoff, onPassengerChan
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      pickup: "",
+      dropoff: "",
       passengerCount: 1,
       cargoVolume: "small",
       trafficConditions: "moderate",
@@ -55,24 +59,31 @@ export default function VehicleSuggestionForm({ pickup, dropoff, onPassengerChan
 
   const { watch, setValue } = form;
   const passengerCount = watch("passengerCount");
+  const pickup = watch("pickup");
+  const dropoff = watch("dropoff");
 
   useEffect(() => {
     onPassengerChange(passengerCount);
   }, [passengerCount, onPassengerChange]);
 
+  useEffect(() => {
+    onPickupChange(pickup);
+  }, [pickup, onPickupChange]);
+
+  useEffect(() => {
+    onDropoffChange(dropoff);
+  }, [dropoff, onDropoffChange]);
+
 
   const handleSuggestion: SubmitHandler<FormValues> = async (data) => {
-    if (!pickup || !dropoff) {
-      form.setError("root", { message: "Please select pickup and dropoff locations on the map." });
-      return;
-    }
     setIsLoading(true);
     setError(null);
     setSuggestion(null);
     try {
       const result = await getVehicleSuggestion({
-        ...data,
         passengerCount: Number(data.passengerCount),
+        cargoVolume: data.cargoVolume,
+        trafficConditions: data.trafficConditions,
       });
       setSuggestion(result);
     } catch (e) {
@@ -88,28 +99,38 @@ export default function VehicleSuggestionForm({ pickup, dropoff, onPassengerChan
       <h2 className="text-2xl font-bold">Where to?</h2>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSuggestion)} className="space-y-4">
-            <div className="space-y-2">
-                <FormLabel>Pickup Location</FormLabel>
-                <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        readOnly 
-                        value={pickup || "Select on map"}
-                        className="pl-10 font-medium"
-                    />
-                </div>
-            </div>
-            <div className="space-y-2">
-                <FormLabel>Drop-off Location</FormLabel>
-                <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        readOnly 
-                        value={dropoff || "Select on map"}
-                        className="pl-10 font-medium"
-                    />
-                </div>
-            </div>
+             <FormField
+              control={form.control}
+              name="pickup"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Pickup Location</FormLabel>
+                  <FormControl>
+                     <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Enter pickup address" className="pl-10" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="dropoff"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Drop-off Location</FormLabel>
+                   <FormControl>
+                     <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Enter dropoff address" className="pl-10" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
