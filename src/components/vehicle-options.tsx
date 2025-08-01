@@ -94,11 +94,12 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
   const [seats, setSeats] = useState(passengerCount);
   const [isLoading, setIsLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
+  const [bookingType, setBookingType] = useState("seat"); // 'seat' or 'car'
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  const distance = 10; // Default distance in km since map is removed
+  const distance = 10; // Default distance in km
 
   useEffect(() => {
     setSeats(passengerCount);
@@ -112,11 +113,18 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
     }
   };
   
-  const calculatePrice = (ratePerKm: number, numSeats: number) => {
-      if (!distance) return 0;
-      // Simple price calculation, could be more complex (e.g. base fare + per km + per seat)
-      const price = distance * ratePerKm * (numSeats / (vehicles.find(v => v.type === selectedVehicle)?.capacity || 1));
-      return Math.max(price, ratePerKm * 0.5); // Ensure a minimum price
+  const calculatePrice = (vehicle: typeof vehicles[0] | undefined, numSeats: number, type: 'seat' | 'car') => {
+      if (!distance || !vehicle) return 0;
+      
+      let price: number;
+      if (type === 'car') {
+          // Fixed price for the whole car, maybe a slight premium
+          price = distance * vehicle.ratePerKm * 1.1; 
+      } else {
+          // Simple price calculation, could be more complex (e.g. base fare + per km + per seat)
+          price = distance * (vehicle.ratePerKm / vehicle.capacity) * numSeats;
+      }
+      return Math.max(price, vehicle.ratePerKm * 0.5); // Ensure a minimum price
   }
 
   const proceedWithRideRequest = async (rideData: any) => {
@@ -174,14 +182,16 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         setIsLoading(false);
         return;
     }
+    
+    const finalSeats = bookingType === 'car' ? vehicle.capacity : seats;
 
     const rideData = {
         userId: user.uid,
         pickupLocation: pickup,
         dropoffLocation: dropoff,
         vehicleType: vehicle.type,
-        price: calculatePrice(vehicle.ratePerKm, seats),
-        passengerCount: seats,
+        price: calculatePrice(vehicle, finalSeats, bookingType as 'seat' | 'car'),
+        passengerCount: finalSeats,
         paymentMethod: paymentMethod,
     };
     
@@ -271,7 +281,7 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="font-bold flex items-center gap-1"><IndianRupee className="h-4 w-4" />{calculatePrice(vehicle.ratePerKm, vehicle.capacity).toFixed(2)}</p>
+                                    <p className="font-bold flex items-center gap-1"><IndianRupee className="h-4 w-4" />{calculatePrice(vehicle, vehicle.capacity, 'car').toFixed(2)}</p>
                                      <p className="text-xs text-muted-foreground text-right">Full ride</p>
                                 </div>
                             </div>
@@ -282,22 +292,44 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         </div>
         {selectedVehicle && selectedVehicleData && (
             <Card className="p-4 space-y-4 animate-in fade-in-50">
+                 <div>
+                    <h4 className="text-sm font-medium mb-2">Booking Type</h4>
+                     <RadioGroup value={bookingType} onValueChange={setBookingType} className="grid grid-cols-2 gap-4">
+                        <div>
+                          <RadioGroupItem value="seat" id="seat" className="peer sr-only" />
+                          <Label htmlFor="seat" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            By Seat
+                          </Label>
+                        </div>
+                         <div>
+                          <RadioGroupItem value="car" id="car" className="peer sr-only" />
+                          <Label htmlFor="car" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            Whole Car
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                </div>
+
                 <div>
                     <div className="grid grid-cols-2 gap-4 items-center">
                         <div>
-                            <Label htmlFor="seats">Seats</Label>
-                            <Input 
-                                id="seats"
-                                type="number" 
-                                min="1" 
-                                max={selectedVehicleData.capacity} 
-                                value={seats}
-                                onChange={(e) => setSeats(Math.min(Number(e.target.value), selectedVehicleData.capacity))}
-                                className="mt-1"
-                            />
+                            {bookingType === 'seat' && (
+                                <>
+                                    <Label htmlFor="seats">Seats</Label>
+                                    <Input 
+                                        id="seats"
+                                        type="number" 
+                                        min="1" 
+                                        max={selectedVehicleData.capacity} 
+                                        value={seats}
+                                        onChange={(e) => setSeats(Math.min(Number(e.target.value), selectedVehicleData.capacity))}
+                                        className="mt-1"
+                                    />
+                                </>
+                            )}
                         </div>
                         <div className="text-right">
-                            <p className="text-2xl font-bold"><IndianRupee className="inline h-5 w-5 -mt-1" />{calculatePrice(selectedVehicleData.ratePerKm, seats).toFixed(2)}</p>
+                            <p className="text-2xl font-bold"><IndianRupee className="inline h-5 w-5 -mt-1" />{calculatePrice(selectedVehicleData, bookingType === 'car' ? selectedVehicleData.capacity : seats, bookingType as 'seat'|'car').toFixed(2)}</p>
                             <p className="text-sm text-muted-foreground">Estimated price</p>
                         </div>
                     </div>
@@ -350,4 +382,3 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
     </div>
   );
 }
-
