@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -31,6 +32,7 @@ export default function DriverRegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { user, userProfile } = useAuth();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -43,13 +45,25 @@ export default function DriverRegisterPage() {
     },
   });
 
+  useEffect(() => {
+    if (userProfile) {
+        form.setValue('fullName', `${userProfile.firstName} ${userProfile.lastName}`);
+        form.setValue('email', userProfile.email);
+    }
+  }, [userProfile, form]);
+
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
+    if (!user) {
+        toast({ title: "Please log in", description: "You must be logged in to register as a driver.", variant: "destructive"});
+        return;
+    }
     setIsLoading(true);
     try {
-      // Save driver data to Firestore
-      await addDoc(collection(db, "drivers"), {
+      // Save driver data to Firestore, using the user's UID as the document ID
+      await setDoc(doc(db, "drivers", user.uid), {
         ...data,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
+        userId: user.uid,
       });
 
       toast({
@@ -92,7 +106,7 @@ export default function DriverRegisterPage() {
                         <FormItem>
                           <FormLabel>Full Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Max Robinson" {...field} />
+                            <Input placeholder="Max Robinson" {...field} readOnly />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -105,7 +119,7 @@ export default function DriverRegisterPage() {
                         <FormItem>
                           <FormLabel>Email Address</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="m@example.com" {...field} />
+                            <Input type="email" placeholder="m@example.com" {...field} readOnly />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

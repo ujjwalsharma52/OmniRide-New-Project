@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 interface Driver {
   id: string;
   fullName: string;
+  vehicleModel: string;
+  licensePlate: string;
 }
 
 interface Ride {
@@ -69,11 +71,20 @@ export default function DriverPage() {
   const [usersMap, setUsersMap] = useState<UserMap>({});
 
   useEffect(() => {
+    async function fetchDriverProfile(userId: string) {
+      const driverDocRef = doc(db, "drivers", userId);
+      const driverSnap = await getDoc(driverDocRef);
+      if (driverSnap.exists()) {
+        setDriver({ id: driverSnap.id, ...driverSnap.data() } as Driver);
+      } else {
+        setDriver(null); // Not a registered driver
+      }
+    }
+
     async function fetchInitialData() {
         if (user) {
             setLoading(true);
-            const currentDriver = { id: user.uid, fullName: `${userProfile?.firstName} ${userProfile?.lastName}` };
-            setDriver(currentDriver);
+            await fetchDriverProfile(user.uid);
             
             // Pre-fetch all users to build a map for quick lookup
             const usersSnapshot = await getDocs(collection(db, "users"));
@@ -86,20 +97,17 @@ export default function DriverPage() {
 
             await fetchRideHistory(user.uid);
             
-            // Setup real-time listeners
-            const q = query(collection(db, "rides"), where("status", "in", ["pending", "accepted", "ongoing"]));
-            const unsubscribe = onSnapshot(q, (querySnapshot) => {
-                const ridesList: Ride[] = [];
-                querySnapshot.forEach(doc => {
-                    ridesList.push({ id: doc.id, ...doc.data() } as Ride);
-                });
+            // Setup real-time listeners for rides
+            const ridesQuery = query(collection(db, "rides"), where("status", "in", ["pending", "accepted", "ongoing"]));
+            const unsubscribe = onSnapshot(ridesQuery, (querySnapshot) => {
+                const allRides: Ride[] = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ride));
                 
                 // Filter rides on the client
-                const pending = ridesList.filter(ride => ride.status === 'pending');
-                const accepted = ridesList.filter(ride => ride.driverId === user.uid && (ride.status === 'accepted' || ride.status === 'ongoing'));
+                const pending = allRides.filter(ride => ride.status === 'pending');
+                const acceptedByMe = allRides.filter(ride => ride.driverId === user.uid && (ride.status === 'accepted' || ride.status === 'ongoing'));
                 
                 setAvailableRides(pending);
-                setMyRides(accepted);
+                setMyRides(acceptedByMe);
                 setLoading(false);
             }, (error) => {
                 console.error("Error fetching rides: ", error);
@@ -113,7 +121,7 @@ export default function DriverPage() {
     }
 
     fetchInitialData();
-  }, [user, userProfile]);
+  }, [user]);
 
   async function fetchRideHistory(driverId: string) {
       const result = await getDriverRides(driverId);
@@ -180,9 +188,11 @@ export default function DriverPage() {
           <h1 className="text-3xl font-bold">Driver Dashboard</h1>
           <p className="text-muted-foreground">{driver ? `Welcome back, ${driver.fullName}` : 'Manage your rides and availability.'}</p>
         </div>
-        <Button asChild>
-          <Link href="/driver/register">Become a Driver</Link>
-        </Button>
+        {!driver && (
+            <Button asChild>
+                <Link href="/driver/register">Become a Driver</Link>
+            </Button>
+        )}
       </div>
 
        {ongoingRide && (
