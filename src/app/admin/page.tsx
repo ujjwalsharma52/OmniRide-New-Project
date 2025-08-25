@@ -81,42 +81,41 @@ export default function AdminPage() {
         const driversSnapshot = await getDocs(query(collection(db, "drivers")));
         setDriverCount(driversSnapshot.size);
 
-        const ridesSnapshot = await getDocs(query(collection(db, "rides")));
-        const rides = ridesSnapshot.docs.map(doc => doc.data() as Ride);
-        setRideCount(rides.length);
+        const ridesResult = await getAllRides();
+        if (ridesResult.success && ridesResult.rides) {
+            const rides = ridesResult.rides as Ride[];
+            setAllRides(rides);
+            setRideCount(rides.length);
 
-        const total = rides.reduce((sum, ride) => sum + (ride.price || 0), 0);
-        setTotalRevenue(total);
+            const total = rides.reduce((sum, ride) => sum + (ride.price || 0), 0);
+            setTotalRevenue(total);
 
-        // Prepare data for the chart (revenue over the last 7 days)
-        const dailyRevenue: { [key: string]: number } = {};
-        for (let i = 0; i < 7; i++) {
-            const date = subDays(new Date(), i);
-            dailyRevenue[format(date, "MMM d")] = 0;
-        }
-
-        rides.forEach(ride => {
-            if (ride.createdAt) {
-                const rideDate = new Date(ride.createdAt);
-                const dateKey = format(rideDate, "MMM d");
-                if (dateKey in dailyRevenue) {
-                    dailyRevenue[dateKey] += ride.price || 0;
-                }
+            // Prepare data for the chart (revenue over the last 7 days)
+            const dailyRevenue: { [key: string]: number } = {};
+            for (let i = 0; i < 7; i++) {
+                const date = subDays(new Date(), i);
+                dailyRevenue[format(date, "MMM d")] = 0;
             }
-        });
+
+            rides.forEach(ride => {
+                if (ride.createdAt) {
+                    const rideDate = new Date(ride.createdAt);
+                    const dateKey = format(rideDate, "MMM d");
+                    if (dateKey in dailyRevenue) {
+                        dailyRevenue[dateKey] += ride.price || 0;
+                    }
+                }
+            });
+            
+            const formattedChartData = Object.keys(dailyRevenue)
+                .map(date => ({ date, total: dailyRevenue[date] }))
+                .reverse();
+            setChartData(formattedChartData);
+        }
         
-        const formattedChartData = Object.keys(dailyRevenue)
-            .map(date => ({ date, total: dailyRevenue[date] }))
-            .reverse();
-        setChartData(formattedChartData);
-        
-        // Fetch detailed lists
         const usersResult = await getAllUsers();
         if (usersResult.success && usersResult.users) setAllUsers(usersResult.users as User[]);
         
-        const ridesResult = await getAllRides();
-        if (ridesResult.success && ridesResult.rides) setAllRides(ridesResult.rides as Ride[]);
-
       } catch (error) {
         console.error("Error fetching admin data:", error);
       } finally {
@@ -146,6 +145,7 @@ export default function AdminPage() {
         case 'accepted': return <Badge>Accepted</Badge>;
         case 'completed': return <Badge className="bg-green-600">Completed</Badge>;
         case 'cancelled': return <Badge variant="destructive">Cancelled</Badge>;
+        case 'ongoing': return <Badge className="bg-blue-600">Ongoing</Badge>;
         default: return <Badge variant="outline">{status}</Badge>;
     }
   }

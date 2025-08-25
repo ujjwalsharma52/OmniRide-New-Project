@@ -120,7 +120,11 @@ export default function DriverPage() {
         }
     }
 
-    fetchInitialData();
+    if(user) {
+      fetchInitialData();
+    } else {
+      setLoading(false);
+    }
   }, [user]);
 
   async function fetchRideHistory(driverId: string) {
@@ -188,7 +192,7 @@ export default function DriverPage() {
           <h1 className="text-3xl font-bold">Driver Dashboard</h1>
           <p className="text-muted-foreground">{driver ? `Welcome back, ${driver.fullName}` : 'Manage your rides and availability.'}</p>
         </div>
-        {!driver && (
+        {!driver && isClient && (
             <Button asChild>
                 <Link href="/driver/register">Become a Driver</Link>
             </Button>
