@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -106,6 +105,10 @@ export default function ProfilePage() {
      )
   }
 
+  const memberSince = userProfile?.createdAt?.toDate 
+    ? userProfile.createdAt.toDate().toLocaleDateString()
+    : 'Unknown';
+
   return (
     <div className="container py-8">
       <Card className="max-w-4xl mx-auto">
@@ -119,7 +122,7 @@ export default function ProfilePage() {
               {userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "Omni Rider"}
             </CardTitle>
             <CardDescription>
-                {userProfile && isClient ? `Member since ${new Date(userProfile.createdAt.seconds * 1000).toLocaleDateString()}` : 'Loading...'}
+                {isClient ? `Member since ${memberSince}` : 'Loading...'}
             </CardDescription>
           </div>
           <Button>Edit Profile</Button>

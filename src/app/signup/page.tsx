@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,7 +70,7 @@ export default function SignupPage() {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
 
       toast({
@@ -78,8 +78,8 @@ export default function SignupPage() {
         description: "You have been successfully signed up.",
       });
 
-      // Redirect to profile page
-      router.push("/profile");
+      // Redirect to home page
+      router.push("/");
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
@@ -94,7 +94,7 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-md max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">Create an Account</CardTitle>
           <CardDescription>

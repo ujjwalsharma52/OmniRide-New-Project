@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -75,11 +74,8 @@ export default function PhoneLoginPage() {
     setIsLoading(true);
     try {
         await confirmationResult.confirm(otp);
-        // OTP is verified. Now you need to check if user exists in your DB
-        // and either log them in or redirect to a signup page.
-        // For now, just redirecting to profile.
         toast({ title: "Logged In!", description: "Welcome to OmniRide."});
-        router.push("/profile");
+        router.push("/");
     } catch (error: any) {
         toast({ title: "Invalid OTP", description: error.message, variant: "destructive" });
     } finally {
@@ -106,7 +102,7 @@ export default function PhoneLoginPage() {
                         value={phone}
                         onChange={setPhone}
                         defaultCountry="IN"
-                        className="input" // Basic styling, can be improved in globals.css
+                        className="PhoneInputInput"
                      />
                 </div>
             ) : (
