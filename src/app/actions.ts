@@ -13,8 +13,42 @@ export async function getVehicleSuggestion(input: SuggestOptimalVehicleInput) {
     return result;
   } catch (error) {
     console.error("Error in getVehicleSuggestion action:", error);
-    // In a real app, you would have more robust error handling and logging
     throw new Error("Failed to communicate with the AI service.");
+  }
+}
+
+export async function getPlaceSuggestions(input: string) {
+  if (!input || input.length < 2) return { success: true, suggestions: [] };
+
+  const url = 'https://google-map-places-new-v2.p.rapidapi.com/v1/places:autocomplete';
+  const options = {
+    method: 'POST',
+    headers: {
+      'x-rapidapi-key': process.env.RAPIDAPI_KEY || '',
+      'x-rapidapi-host': 'google-map-places-new-v2.p.rapidapi.com',
+      'Content-Type': 'application/json',
+      'X-Goog-FieldMask': '*'
+    },
+    body: JSON.stringify({
+      input: input,
+      includeQueryPredictions: true,
+    })
+  };
+
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const result = await response.json();
+    
+    const suggestions = result.suggestions?.map((s: any) => ({
+      description: s.placePrediction?.text?.text || s.queryPrediction?.text?.text || "Unknown location",
+      placeId: s.placePrediction?.placeId || null
+    })) || [];
+
+    return { success: true, suggestions };
+  } catch (error) {
+    console.error("RapidAPI Error:", error);
+    return { success: false, error: "Failed to fetch location suggestions" };
   }
 }
 
@@ -117,7 +151,6 @@ export async function getRideHistory(userId: string) {
             return {
                 id: doc.id,
                 ...data,
-                // Convert Firestore Timestamp to a serializable format (ISO string)
                 createdAt: data.createdAt?.toDate().toISOString(),
             }
         });
@@ -130,7 +163,6 @@ export async function getRideHistory(userId: string) {
 
 export async function getDriverRides(driverId: string) {
     try {
-        // Fetch all users first to avoid N+1 queries.
         const usersSnapshot = await getDocs(collection(db, "users"));
         const usersMap = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data()]));
 
@@ -160,8 +192,6 @@ export async function getDriverRides(driverId: string) {
     }
 }
 
-// --- Admin Actions ---
-
 export async function getAllUsers() {
     try {
         const usersSnapshot = await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc")));
@@ -182,17 +212,14 @@ export async function getAllUsers() {
 
 export async function getAllRides() {
     try {
-        // 1. Fetch all users and drivers first to create a lookup map.
         const usersSnapshot = await getDocs(collection(db, "users"));
         const usersMap = new Map(usersSnapshot.docs.map(doc => [doc.id, doc.data()]));
 
         const driversSnapshot = await getDocs(collection(db, "drivers"));
         const driversMap = new Map(driversSnapshot.docs.map(doc => [doc.id, doc.data()]));
 
-        // 2. Fetch all rides
         const ridesSnapshot = await getDocs(query(collection(db, "rides"), orderBy("createdAt", "desc")));
         
-        // 3. Process rides using the maps (no more lookups in a loop)
         const rides = ridesSnapshot.docs.map(d => {
             const data = d.data();
             let userName = 'N/A';
@@ -228,8 +255,6 @@ export async function updateUserStatus(userId: string, status: { isBanned: boole
         await updateDoc(userRef, {
             isBanned: status.isBanned
         });
-        // In a real app, you would also disable the user in Firebase Auth
-        // using the Admin SDK.
         return { success: true };
     } catch (error) {
         console.error("Error updating user status:", error);
