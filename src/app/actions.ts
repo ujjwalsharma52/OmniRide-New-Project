@@ -81,6 +81,38 @@ export async function getPlaceSuggestions(input: string) {
   }
 }
 
+/**
+ * Authorizes a PayPal order using the RapidAPI PayPal proxy.
+ */
+export async function authorizePayPalOrder(orderId: string, amount: string) {
+  const url = 'https://paypaldimasv1.p.rapidapi.com/authorizeOrder';
+  const options = {
+    method: 'POST',
+    headers: {
+      'x-rapidapi-key': process.env.RAPIDAPI_KEY || '',
+      'x-rapidapi-host': 'PayPaldimasV1.p.rapidapi.com',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      orderId: orderId,
+      sandbox: 'true',
+      amount: amount,
+      accessToken: 'MOCK_TOKEN_FOR_PROTOTYPE'
+    })
+  };
+
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const result = await response.text();
+    console.log("PayPal Authorization Result:", result);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("PayPal RapidAPI Error:", error);
+    return { success: false, error: "Failed to authorize PayPal order" };
+  }
+}
+
 export async function submitRating(input: AnalyzeFeedbackInput, rideId: string, userId: string) {
     try {
         const analysis = await analyzeFeedback(input);
@@ -109,6 +141,7 @@ export async function createRideRequest(rideData: {
   vehicleType: string;
   price: number;
   passengerCount: number;
+  paymentMethod: string;
 }) {
   try {
     const docRef = await addDoc(collection(db, "rides"), {

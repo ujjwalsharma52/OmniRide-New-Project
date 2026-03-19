@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { createRideRequest } from "@/app/actions";
+import { createRideRequest, authorizePayPalOrder } from "@/app/actions";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
@@ -118,13 +118,11 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
       
       let price: number;
       if (type === 'car') {
-          // Fixed price for the whole car, maybe a slight premium
           price = distance * vehicle.ratePerKm * 1.1; 
       } else {
-          // Simple price calculation, could be more complex (e.g. base fare + per km + per seat)
           price = distance * (vehicle.ratePerKm / vehicle.capacity) * numSeats;
       }
-      return Math.max(price, vehicle.ratePerKm * 0.5); // Ensure a minimum price
+      return Math.max(price, vehicle.ratePerKm * 0.5); 
   }
 
   const proceedWithRideRequest = async (rideData: any) => {
@@ -184,44 +182,50 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
     }
     
     const finalSeats = bookingType === 'car' ? vehicle.capacity : seats;
+    const finalPrice = calculatePrice(vehicle, finalSeats, bookingType as 'seat' | 'car');
 
     const rideData = {
         userId: user.uid,
         pickupLocation: pickup,
         dropoffLocation: dropoff,
         vehicleType: vehicle.type,
-        price: calculatePrice(vehicle, finalSeats, bookingType as 'seat' | 'car'),
+        price: finalPrice,
         passengerCount: finalSeats,
         paymentMethod: paymentMethod,
     };
     
-    // If cash, book directly. Otherwise, go to payment.
     if (paymentMethod === "cash") {
         await proceedWithRideRequest(rideData);
         return;
     }
+
+    if (paymentMethod === "paypal") {
+        const mockOrderId = "ORDER-" + Math.random().toString(36).substr(2, 9).toUpperCase();
+        const authResult = await authorizePayPalOrder(mockOrderId, finalPrice.toFixed(2));
+        
+        if (authResult.success) {
+            toast({ title: "PayPal Authorized", description: "Payment processing successfully initiated." });
+            await proceedWithRideRequest(rideData);
+        } else {
+            toast({ title: "PayPal Error", description: authResult.error, variant: "destructive" });
+            setIsLoading(false);
+        }
+        return;
+    }
     
-    // In a real app, you would create an order on your server and get an order_id
-    // For this simulation, we'll proceed directly to payment
     const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: rideData.price * 100, // Amount in paise
+        amount: Math.round(rideData.price * 100),
         currency: "INR",
         name: "OmniRide",
         description: `Ride from ${rideData.pickupLocation} to ${rideData.dropoffLocation}`,
-        image: "https://placehold.co/100x100.png", // Your logo
+        image: "https://placehold.co/100x100.png",
         handler: async function (response: any) {
-            // This function is called after a successful payment
-            console.log("Payment successful:", response);
             await proceedWithRideRequest(rideData);
         },
         prefill: {
             name: `${userProfile.firstName} ${userProfile.lastName}`,
             email: user.email,
-            contact: user.phoneNumber
-        },
-        notes: {
-            address: "OmniRide Corporate Office"
         },
         theme: {
             color: "#6699FF"
@@ -348,10 +352,12 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
                           </Label>
                         </div>
                         <div>
-                          <RadioGroupItem value="wallet" id="wallet" className="peer sr-only" />
-                          <Label htmlFor="wallet" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                            <Wallet className="mb-3 h-6 w-6" />
-                            Wallet
+                          <RadioGroupItem value="paypal" id="paypal" className="peer sr-only" />
+                          <Label htmlFor="paypal" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                             <div className="flex items-center gap-2 mb-3">
+                                <Image src="https://www.vectorlogo.zone/logos/paypal/paypal-icon.svg" alt="PayPal" width={24} height={24} />
+                            </div>
+                            PayPal
                           </Label>
                         </div>
                         <div>
