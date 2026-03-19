@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -70,6 +70,15 @@ export default function ProfilePage() {
     }
   }, [user, loading]);
 
+  const memberSince = useMemo(() => {
+    if (!isClient || !userProfile?.createdAt?.toDate) return 'Loading...';
+    try {
+      return userProfile.createdAt.toDate().toLocaleDateString();
+    } catch (e) {
+      return 'Unknown';
+    }
+  }, [isClient, userProfile]);
+
   const getInitials = () => {
     if (userProfile) {
       return `${userProfile.firstName[0]}${userProfile.lastName[0]}`;
@@ -104,10 +113,6 @@ export default function ProfilePage() {
         </div>
      )
   }
-
-  const memberSince = userProfile?.createdAt?.toDate 
-    ? userProfile.createdAt.toDate().toLocaleDateString()
-    : 'Unknown';
 
   return (
     <div className="container py-8">

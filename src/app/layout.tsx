@@ -13,7 +13,6 @@ export const metadata: Metadata = {
   title: 'OmniRide',
   description: 'Your ride, your way.',
   manifest: '/manifest.json',
-  themeColor: '#6699FF',
 };
 
 export default function RootLayout({
@@ -26,7 +25,7 @@ export default function RootLayout({
        <head>
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
