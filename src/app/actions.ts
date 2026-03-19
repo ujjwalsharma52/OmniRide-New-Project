@@ -7,16 +7,45 @@ import type { SuggestOptimalVehicleInput, AnalyzeFeedbackInput } from "@/ai/sche
 import { db } from "@/lib/firebase";
 import { addDoc, collection, doc, serverTimestamp, updateDoc, getDocs, query, where, orderBy, getDoc } from "firebase/firestore";
 
+/**
+ * Suggests a vehicle based on user input.
+ * Includes a robust fallback if the Genkit AI service fails (e.g., missing API keys).
+ */
 export async function getVehicleSuggestion(input: SuggestOptimalVehicleInput) {
   try {
     const result = await suggestOptimalVehicle(input);
     return result;
   } catch (error) {
-    console.error("Error in getVehicleSuggestion action:", error);
-    throw new Error("Failed to communicate with the AI service.");
+    console.warn("AI suggestion service unavailable, using heuristic fallback.", error);
+    
+    // Heuristic Fallback Logic
+    let vehicle = 'Standard';
+    let reasoning = "A standard sedan is our most versatile option for your trip.";
+
+    if (input.passengerCount === 1 && input.cargoVolume === 'small') {
+      vehicle = 'Moto';
+      reasoning = "A motorcycle is the quickest way for a solo traveler with minimal luggage.";
+    } else if (input.passengerCount > 6) {
+      vehicle = 'XL';
+      reasoning = "For large groups, an XL vehicle ensures everyone can travel together comfortably.";
+    } else if (input.passengerCount > 4 || input.cargoVolume === 'large') {
+      vehicle = 'SUV';
+      reasoning = "An SUV provides the extra space needed for your passengers or cargo.";
+    } else if (input.passengerCount <= 3 && input.trafficConditions === 'heavy') {
+      vehicle = 'Auto';
+      reasoning = "An auto-rickshaw is ideal for navigating through heavy city traffic.";
+    }
+
+    return { 
+      vehicleSuggestion: vehicle, 
+      reasoning: `${reasoning} (Note: System suggestion while AI is offline.)` 
+    };
   }
 }
 
+/**
+ * Fetches location suggestions using the RapidAPI Google Maps Places proxy.
+ */
 export async function getPlaceSuggestions(input: string) {
   if (!input || input.length < 2) return { success: true, suggestions: [] };
 
