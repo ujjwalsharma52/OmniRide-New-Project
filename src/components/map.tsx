@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { useCallback, useState, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Map as MapIcon } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const containerStyle = {
@@ -26,9 +25,11 @@ interface MapProps {
 }
 
 export default function Map({ pickupCoords, dropoffCoords, onMapClick }: MapProps) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    googleMapsApiKey: apiKey,
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -55,16 +56,32 @@ export default function Map({ pickupCoords, dropoffCoords, onMapClick }: MapProp
     }
   }, [map, pickupCoords, dropoffCoords]);
 
+  if (!apiKey) {
+    return (
+      <Card className="w-full h-full flex flex-col justify-center items-center text-center p-8 bg-muted/50 border-dashed">
+        <MapIcon className="h-12 w-12 mb-4 text-muted-foreground" />
+        <h3 className="text-xl font-semibold mb-2">Map Preview Disabled</h3>
+        <p className="text-muted-foreground text-sm">
+          Please add a valid Google Maps API key to your <code className="bg-muted px-1 rounded">.env</code> file to enable the interactive map.
+        </p>
+      </Card>
+    );
+  }
+
   if (loadError) {
     return (
-      <Alert variant="destructive" className="h-full flex flex-col justify-center items-center text-center p-8">
+      <Alert variant="destructive" className="h-full flex flex-col justify-center items-center text-center p-8 overflow-auto">
         <AlertCircle className="h-12 w-12 mb-4" />
         <AlertTitle className="text-xl mb-2">Map Load Error</AlertTitle>
-        <AlertDescription>
-          There was a problem loading Google Maps. This usually happens if the API key is invalid or restricted.
-          Please check your <code className="bg-destructive/20 px-1 rounded">.env</code> file and Google Cloud Console settings.
-          <br /><br />
-          Error Details: {loadError.message}
+        <AlertDescription className="space-y-4">
+          <p>There was a problem loading Google Maps. This usually happens if the API key is invalid or restricted.</p>
+          <div className="bg-background/50 p-3 rounded text-left font-mono text-xs break-all">
+            <strong>Error Message:</strong> {loadError.message}
+          </div>
+          <div className="text-sm text-muted-foreground border-t pt-4">
+            <p className="font-semibold text-destructive">Diagnostic Note:</p>
+            <p>The key provided appears to be in a RapidAPI format. The Google Maps JavaScript SDK requires a direct API Key from the Google Cloud Platform (usually starts with 'AIza').</p>
+          </div>
         </AlertDescription>
       </Alert>
     );
