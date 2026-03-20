@@ -1,8 +1,7 @@
-
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { 
@@ -19,7 +18,8 @@ import {
   Users, 
   CheckCircle2, 
   Zap,
-  ChevronRight
+  ChevronRight,
+  Map as MapIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -103,18 +103,52 @@ const vehicles = [
   },
 ];
 
+// Haversine formula to calculate distance between two coordinates
+function calculateHaversineDistance(coords1: google.maps.LatLngLiteral, coords2: google.maps.LatLngLiteral) {
+  const R = 6371; // Earth's radius in km
+  const dLat = (coords2.lat - coords1.lat) * Math.PI / 180;
+  const dLon = (coords2.lng - coords1.lng) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(coords1.lat * Math.PI / 180) * Math.cos(coords2.lat * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c;
+  return d * 1.3; // Applying a 1.3x multiplier to simulate road distance vs straight line
+}
 
-export default function VehicleOptions({ pickup, dropoff, passengerCount, onRideRequested }: { pickup: string; dropoff: string; passengerCount: number; onRideRequested: (rideId: string) => void; }) {
+interface VehicleOptionsProps {
+  pickup: string;
+  dropoff: string;
+  pickupCoords?: google.maps.LatLngLiteral | null;
+  dropoffCoords?: google.maps.LatLngLiteral | null;
+  passengerCount: number;
+  onRideRequested: (rideId: string) => void;
+}
+
+export default function VehicleOptions({ 
+  pickup, 
+  dropoff, 
+  pickupCoords, 
+  dropoffCoords, 
+  passengerCount, 
+  onRideRequested 
+}: VehicleOptionsProps) {
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
   const [seats, setSeats] = useState(passengerCount);
   const [isLoading, setIsLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("card"); // "card" is Razorpay (Fastest Digital)
-  const [bookingType, setBookingType] = useState("seat"); // 'seat' or 'car'
+  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [bookingType, setBookingType] = useState("seat");
   const { user, userProfile } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  const distance = 12; // Standard distance for prototype calculation
+  const distance = useMemo(() => {
+    if (pickupCoords && dropoffCoords) {
+      return calculateHaversineDistance(pickupCoords, dropoffCoords);
+    }
+    return 12; // Fallback mock distance if coords are missing
+  }, [pickupCoords, dropoffCoords]);
 
   useEffect(() => {
     setSeats(passengerCount);
@@ -228,7 +262,6 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
         return;
     }
     
-    // Razorpay Integration (Fast Digital)
     const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_mock_key',
         amount: Math.round(rideData.price * 100),
@@ -258,7 +291,6 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
             const rzp = new window.Razorpay(options);
             rzp.open();
         } else {
-            // Fallback for dev/missing script
             console.warn("Razorpay SDK not loaded, using fast mock...");
             await proceedWithRideRequest(rideData);
         }
@@ -278,9 +310,16 @@ export default function VehicleOptions({ pickup, dropoff, passengerCount, onRide
     <div className="space-y-4">
         <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold">Select a Vehicle</h3>
-            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center gap-1">
-                <Zap className="h-3 w-3 fill-primary" /> Fastest Arrival: 3m
-            </span>
+            <div className="flex flex-col items-end">
+                <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center gap-1">
+                    <Zap className="h-3 w-3 fill-primary" /> Fastest Arrival: 3m
+                </span>
+                {pickupCoords && dropoffCoords && (
+                    <span className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                        <MapIcon className="h-3 w-3" /> Trip Distance: {distance.toFixed(1)} km
+                    </span>
+                )}
+            </div>
         </div>
 
         <div className="grid gap-2">

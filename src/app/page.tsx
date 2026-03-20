@@ -61,6 +61,8 @@ export default function Home() {
           <VehicleOptions
             pickup={pickup}
             dropoff={dropoff}
+            pickupCoords={pickupCoords}
+            dropoffCoords={dropoffCoords}
             passengerCount={passengerCount}
             onRideRequested={handleNewRide}
           />
